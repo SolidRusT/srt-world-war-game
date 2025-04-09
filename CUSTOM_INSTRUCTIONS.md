@@ -2,6 +2,23 @@
 
 This document provides guidelines for using Claude and MCP tools to develop our turn-based strategy game inspired by RISK.
 
+## CRITICAL: WORKING WITH THE EXISTING CODEBASE
+
+1. **ALWAYS check the existing file structure before any modifications**
+   - Use `list_directory` and `directory_tree` to understand the current state
+   - Review code before modifying it to maintain consistency
+   - Do NOT recreate files or directories that already exist
+
+2. **Respect the established architecture**
+   - The project uses React with a Vite build system
+   - Follow the existing patterns when adding new features
+   - Maintain separation of concerns between game logic and UI
+
+3. **Preserve existing functionality**
+   - Test that changes don't break existing features
+   - Use the REPL to validate before implementing in files
+   - Add to the codebase, don't replace working components
+
 ## AVAILABLE TOOLS AND THEIR USAGE
 
 ### File System Operations
