@@ -1,0 +1,251 @@
+/* GameDashboard.css */
+
+.game-dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard-left {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dashboard-right {
+  flex: 2;
+  min-width: 400px;
+}
+
+/* Common card styling */
+.player-info,
+.game-status,
+.action-panel {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Player info section */
+.player-info h3 {
+  margin-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+.color-indicator {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.player-details p {
+  margin: 10px 0;
+}
+
+.resources h4,
+.technologies h4 {
+  margin: 15px 0 5px;
+  font-size: 16px;
+}
+
+.resources ul,
+.technologies ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.resources li,
+.technologies li {
+  margin: 5px 0;
+}
+
+.resource-icon {
+  margin-right: 5px;
+}
+
+/* Game status section */
+.game-status .status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.game-status h3 {
+  margin: 0;
+  color: #333;
+}
+
+.turn-indicator {
+  background-color: #6200ea;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.phase-indicator,
+.active-player {
+  margin: 10px 0;
+}
+
+.player-list h4 {
+  margin: 15px 0 5px;
+  font-size: 16px;
+}
+
+.player-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-list li {
+  padding: 8px 10px;
+  margin: 5px 0;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border-left: 5px solid #ddd;
+}
+
+.player-list li.eliminated {
+  opacity: 0.6;
+}
+
+.eliminated-tag {
+  background-color: #f44336;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 10px;
+}
+
+.active-events h4 {
+  margin: 15px 0 5px;
+  font-size: 16px;
+}
+
+.active-events ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.active-events li {
+  padding: 10px;
+  margin: 5px 0;
+  background-color: #fff3e0;
+  border-radius: 4px;
+  border-left: 5px solid #ff9800;
+}
+
+.event-duration {
+  font-size: 12px;
+  color: #757575;
+  margin-left: 10px;
+}
+
+/* Action panel */
+.action-panel {
+  background-color: #f5f8ff;
+  border-left: 5px solid #2962ff;
+}
+
+.action-panel.reinforcement {
+  border-left-color: #00c853;
+}
+
+.action-panel.attack {
+  border-left-color: #d50000;
+}
+
+.action-panel.fortification {
+  border-left-color: #6200ea;
+}
+
+.action-panel.waiting {
+  border-left-color: #ff6d00;
+}
+
+.action-panel h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.form-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.form-buttons button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.form-buttons button[type="submit"] {
+  background-color: #2962ff;
+  color: white;
+}
+
+.form-buttons button[type="submit"]:hover {
+  background-color: #0039cb;
+}
+
+.form-buttons button[type="button"] {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.form-buttons button[type="button"]:hover {
+  background-color: #bdbdbd;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .game-dashboard {
+    flex-direction: column;
+  }
+  
+  .dashboard-left,
+  .dashboard-right {
+    width: 100%;
+  }
+}
