@@ -385,10 +385,50 @@ class GameEngine {
       }
     }
     
-    // Apply casualties
-    // For now, just use infantry units for simplicity
-    fromTerritory.armies.infantry -= attackerLosses;
-    toTerritory.armies.infantry -= defenderLosses;
+    // Apply casualties to different unit types in order: infantry, cavalry, artillery
+    // Attacker casualties
+    let remainingAttackerLosses = attackerLosses;
+    
+    // Remove infantry first
+    const infantryLosses = Math.min(fromTerritory.armies.infantry, remainingAttackerLosses);
+    fromTerritory.armies.infantry -= infantryLosses;
+    remainingAttackerLosses -= infantryLosses;
+    
+    // Remove cavalry if needed
+    if (remainingAttackerLosses > 0) {
+      const cavalryLosses = Math.min(fromTerritory.armies.cavalry, remainingAttackerLosses);
+      fromTerritory.armies.cavalry -= cavalryLosses;
+      remainingAttackerLosses -= cavalryLosses;
+    }
+    
+    // Remove artillery if needed
+    if (remainingAttackerLosses > 0) {
+      const artilleryLosses = Math.min(fromTerritory.armies.artillery, remainingAttackerLosses);
+      fromTerritory.armies.artillery -= artilleryLosses;
+      remainingAttackerLosses -= artilleryLosses;
+    }
+    
+    // Defender casualties
+    let remainingDefenderLosses = defenderLosses;
+    
+    // Remove infantry first
+    const defInfantryLosses = Math.min(toTerritory.armies.infantry, remainingDefenderLosses);
+    toTerritory.armies.infantry -= defInfantryLosses;
+    remainingDefenderLosses -= defInfantryLosses;
+    
+    // Remove cavalry if needed
+    if (remainingDefenderLosses > 0) {
+      const defCavalryLosses = Math.min(toTerritory.armies.cavalry, remainingDefenderLosses);
+      toTerritory.armies.cavalry -= defCavalryLosses;
+      remainingDefenderLosses -= defCavalryLosses;
+    }
+    
+    // Remove artillery if needed
+    if (remainingDefenderLosses > 0) {
+      const defArtilleryLosses = Math.min(toTerritory.armies.artillery, remainingDefenderLosses);
+      toTerritory.armies.artillery -= defArtilleryLosses;
+      remainingDefenderLosses -= defArtilleryLosses;
+    }
     
     // Check if defender is defeated
     let territoryConquered = false;
@@ -420,9 +460,11 @@ class GameEngine {
         this.gameState.checkGameEnd();
       }
       
-      // Award a card for conquering at least one territory this turn
-      // (only awarded once per turn, would need a flag in gameState)
-      // TODO: Implement card awarding
+      // Flag that a card should be awarded at the end of the attack phase
+      // Only awarded once per turn for conquering at least one territory
+      if (!this.gameState.cardAwarded) {
+        this.gameState.cardAwarded = true;
+      }
     }
     
     return {
@@ -477,9 +519,36 @@ class GameEngine {
       return false;
     }
     
-    // Move the armies (for simplicity, just using infantry)
-    fromTerritory.armies.infantry -= armyCount;
-    toTerritory.armies.infantry += armyCount;
+    // Move the armies, handling different unit types
+    let remainingToMove = armyCount;
+    
+    // Move infantry first
+    const infantryToMove = Math.min(fromTerritory.armies.infantry, remainingToMove);
+    if (infantryToMove > 0) {
+      fromTerritory.armies.infantry -= infantryToMove;
+      toTerritory.armies.infantry += infantryToMove;
+      remainingToMove -= infantryToMove;
+    }
+    
+    // Move cavalry if needed and available
+    if (remainingToMove > 0) {
+      const cavalryToMove = Math.min(fromTerritory.armies.cavalry, Math.ceil(remainingToMove / 3));
+      if (cavalryToMove > 0) {
+        fromTerritory.armies.cavalry -= cavalryToMove;
+        toTerritory.armies.cavalry += cavalryToMove;
+        remainingToMove -= cavalryToMove * 3;
+      }
+    }
+    
+    // Move artillery if needed and available
+    if (remainingToMove > 0) {
+      const artilleryToMove = Math.min(fromTerritory.armies.artillery, Math.ceil(remainingToMove / 5));
+      if (artilleryToMove > 0) {
+        fromTerritory.armies.artillery -= artilleryToMove;
+        toTerritory.armies.artillery += artilleryToMove;
+        remainingToMove -= artilleryToMove * 5;
+      }
+    }
     
     // Advance to the next phase/player
     this.gameState.nextPhase();

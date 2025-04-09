@@ -208,7 +208,7 @@ class GameState {
     this.winner = null;
     this.eventLog = [];
     this.activeEvents = [];
-    this.cardAwarded = false; // Flag to track if a card has been awarded for conquering a territory this turn
+    this.cardAwarded = false; // Flag to track if a card should be awarded at the end of the attack phase
   }
 
   /**

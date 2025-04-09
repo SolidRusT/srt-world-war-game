@@ -359,21 +359,24 @@ class CombatSystem {
     // Update territory ownership
     territory.occupyingPlayer = newOwnerId;
     
-    // Clear any remaining armies
+    // Clear any remaining armies first
     territory.armies = {
       infantry: 0,
       cavalry: 0,
       artillery: 0
     };
     
+    // Move attacking armies (using infantry for consistency with game-engine.js)
+    territory.armies.infantry = armyCount;
+    
     // Update player territory lists
     newOwner.territories.push(territoryId);
     previousOwner.territories = previousOwner.territories.filter(id => id !== territoryId);
     
-    // Award card for first territory conquered this turn
-    if (!this.gameState.hasConqueredTerritoryThisTurn) {
-      this.awardCard(newOwnerId);
-      this.gameState.hasConqueredTerritoryThisTurn = true;
+    // Set card awarded flag instead of immediately awarding the card
+    // This ensures consistency with game-engine.js approach
+    if (!this.gameState.cardAwarded) {
+      this.gameState.cardAwarded = true;
     }
   }
 
@@ -397,10 +400,37 @@ class CombatSystem {
     const totalArmies = fromTerritory.getTotalArmies();
     if (totalArmies <= count) return false;
     
-    // Move units (prioritizing infantry for simplicity)
+    // Move units based on what's available, prioritizing infantry first for simplicity
     // In a more sophisticated implementation, we would allow the player to choose which unit types to move
-    toTerritory.armies.infantry += count;
-    fromTerritory.armies.infantry -= count;
+    let remainingToMove = count;
+    
+    // Move infantry first
+    const infantryToMove = Math.min(fromTerritory.armies.infantry, remainingToMove);
+    if (infantryToMove > 0) {
+      fromTerritory.armies.infantry -= infantryToMove;
+      toTerritory.armies.infantry += infantryToMove;
+      remainingToMove -= infantryToMove;
+    }
+    
+    // Move cavalry if needed and available
+    if (remainingToMove > 0) {
+      const cavalryToMove = Math.min(fromTerritory.armies.cavalry, Math.ceil(remainingToMove / 3));
+      if (cavalryToMove > 0) {
+        fromTerritory.armies.cavalry -= cavalryToMove;
+        toTerritory.armies.cavalry += cavalryToMove;
+        remainingToMove -= cavalryToMove * 3;
+      }
+    }
+    
+    // Move artillery if needed and available
+    if (remainingToMove > 0) {
+      const artilleryToMove = Math.min(fromTerritory.armies.artillery, Math.ceil(remainingToMove / 5));
+      if (artilleryToMove > 0) {
+        fromTerritory.armies.artillery -= artilleryToMove;
+        toTerritory.armies.artillery += artilleryToMove;
+        remainingToMove -= artilleryToMove * 5;
+      }
+    }
     
     return true;
   }
@@ -436,30 +466,27 @@ class CombatSystem {
   }
 
   /**
-   * Award a card to a player
+   * Helper method to award a card to a player
    * @param {string} playerId - ID of the player
+   * @returns {Object|null} The awarded card or null if no card was awarded
+   * 
+   * Note: This is now a utility method that doesn't directly modify the game state.
+   * It's kept for future reference but not currently used directly by the combat system.
    */
-  awardCard(playerId) {
-    const player = this.gameState.players.find(p => p.id === playerId);
-    if (!player || this.gameState.cardDeck.length === 0) return;
-    
-    // Draw a card from the deck
-    const card = this.gameState.cardDeck.pop();
-    player.cards.push(card);
-    
-    // Reshuffle the deck if empty
-    if (this.gameState.cardDeck.length === 0 && this.gameState.discardPile.length > 0) {
-      this.gameState.cardDeck = this.shuffleArray([...this.gameState.discardPile]);
-      this.gameState.discardPile = [];
+  getCardForPlayer(playerId) {
+    // This is now a utility method that doesn't directly modify the game state
+    // It's kept for future reference but not currently used
+    if (this.gameState.cardDeck.length === 0) {
+      // Reshuffle the discard pile if the deck is empty
+      if (this.gameState.discardPile.length > 0) {
+        this.gameState.cardDeck = this.shuffleArray([...this.gameState.discardPile]);
+        this.gameState.discardPile = [];
+      } else {
+        return null; // No cards available
+      }
     }
     
-    // Log card award
-    this.gameState.eventLog.push({
-      type: 'card-awarded',
-      playerId,
-      card,
-      turn: this.gameState.turn
-    });
+    return this.gameState.cardDeck.length > 0 ? this.gameState.cardDeck[this.gameState.cardDeck.length - 1] : null;
   }
 
   /**
