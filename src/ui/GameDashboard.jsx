@@ -412,7 +412,7 @@ const GameDashboard = ({
           </ul>
         </div>
         
-        {gameState.config.enableEvents && gameState.activeEvents.length > 0 && (
+        {gameState.config.enableEvents && gameState.activeEvents && gameState.activeEvents.length > 0 && (
           <div className="active-events">
             <h4>Active Events</h4>
             <ul>

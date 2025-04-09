@@ -32,59 +32,93 @@ const App = () => {
   
   // Initialize game on component mount
   useEffect(() => {
-    // Check for autosave
-    if (SaveLoadSystem.saveExists('autosave')) {
+    // Clear any existing autosaves that may be corrupted
+    if (localStorage.getItem('risk-game-autosave')) {
       const loadFromAutoSave = window.confirm('An autosave was found. Do you want to load it?');
       if (loadFromAutoSave) {
-        loadGame('autosave');
-        return;
+        const success = loadGame('autosave');
+        if (!success) {
+          // If loading failed, delete the autosave and initialize a new game
+          localStorage.removeItem('risk-game-autosave');
+          initializeGame();
+        }
+      } else {
+        // If user declined to load, delete the autosave and initialize a new game
+        localStorage.removeItem('risk-game-autosave');
+        initializeGame();
       }
+    } else {
+      // No autosave exists, initialize a new game
+      initializeGame();
     }
-    
-    initializeGame();
   }, []);
   
   // Create autosave periodically
   useEffect(() => {
     if (!gameState || gameState.gameOver) return;
     
-    const autosaveInterval = setInterval(() => {
-      SaveLoadSystem.createAutoSave(gameState);
+    // Clear any existing autosave interval
+    if (window.autosaveInterval) {
+      clearInterval(window.autosaveInterval);
+    }
+    
+    // Create a new autosave interval
+    window.autosaveInterval = setInterval(() => {
+      console.log('Creating autosave...');
+      try {
+        SaveLoadSystem.createAutoSave(gameState);
+      } catch (error) {
+        console.error('Failed to create autosave:', error);
+      }
     }, 60000); // Autosave every minute
     
-    return () => clearInterval(autosaveInterval);
+    // Clean up on unmount
+    return () => {
+      if (window.autosaveInterval) {
+        clearInterval(window.autosaveInterval);
+      }
+    };
   }, [gameState]);
   
   // Initialize a new game
   const initializeGame = () => {
-    // Create game engine
-    const engine = new GameEngine(gameConfig);
-    
-    // Initialize game state
-    const state = engine.initializeGame();
-    
-    // Set human player ID
-    const humanPlayerId = state.players[0].id;
-    
-    // Add some sample cards for testing
-    const territoryIds = state.territories.map(t => t.id);
-    const sampleCards = createSampleCards(territoryIds);
-    state.players[0].cards = sampleCards.slice(0, 5); // Give the human player 5 cards
-    
-    // Create AI players
-    const aiTypes = ['aggressive', 'defensive', 'expansionist', 'balanced'];
-    const ais = {};
-    
-    for (let i = 1; i < state.players.length; i++) {
-      const playerId = state.players[i].id;
-      const aiType = aiTypes[i % aiTypes.length];
-      ais[playerId] = AIPlayerFactory.createAI(playerId, aiType, 'medium');
+    try {
+      console.log('Initializing new game...');
+      
+      // Create game engine
+      const engine = new GameEngine(gameConfig);
+      
+      // Initialize game state
+      const state = engine.initializeGame();
+      
+      // Set human player ID
+      const humanPlayerId = state.players[0].id;
+      
+      // Add some sample cards for testing
+      const territoryIds = state.territories.map(t => t.id);
+      const sampleCards = createSampleCards(territoryIds);
+      state.players[0].cards = sampleCards.slice(0, 5); // Give the human player 5 cards
+      
+      // Create AI players
+      const aiTypes = ['aggressive', 'defensive', 'expansionist', 'balanced'];
+      const ais = {};
+      
+      for (let i = 1; i < state.players.length; i++) {
+        const playerId = state.players[i].id;
+        const aiType = aiTypes[i % aiTypes.length];
+        ais[playerId] = AIPlayerFactory.createAI(playerId, aiType, 'medium');
+      }
+      
+      setGameEngine(engine);
+      setGameState(state);
+      setCurrentPlayerId(humanPlayerId);
+      setAiPlayers(ais);
+      
+      console.log('Game initialized successfully!');
+    } catch (error) {
+      console.error('Error initializing game:', error);
+      alert(`Failed to initialize game: ${error.message}`);
     }
-    
-    setGameEngine(engine);
-    setGameState(state);
-    setCurrentPlayerId(humanPlayerId);
-    setAiPlayers(ais);
   };
   
   // Handle AI turns
@@ -116,7 +150,21 @@ const App = () => {
   // Check for game over
   useEffect(() => {
     if (gameState && gameState.gameOver && gameState.winner) {
-      alert(`Game Over! ${gameState.winner.name} has won the game!`);
+      let message = `Game Over! ${gameState.winner.name} has won the game!`;
+      
+      // Show victory type if available
+      if (gameState.victoryType) {
+        const victoryTypes = {
+          military: 'Military Victory (Domination)',
+          economic: 'Economic Victory (Wealth Control)',
+          technological: 'Technological Victory (Research Supremacy)',
+          diplomatic: 'Diplomatic Victory (Alliance Leader)'
+        };
+        
+        message += `\n\nVictory Type: ${victoryTypes[gameState.victoryType] || gameState.victoryType}`;
+      }
+      
+      alert(message);
     }
   }, [gameState]);
   
@@ -135,6 +183,17 @@ const App = () => {
     
     // Check if it's the human player's turn
     if (gameState.getCurrentPlayer().id !== currentPlayerId) return;
+    
+    // If ending the attack phase and player conquered a territory, award a card
+    if (gameState.phase === 'attack' && gameState.cardAwarded) {
+      // Give the player a card from the deck
+      if (gameState.cardDeck.length > 0) {
+        const card = gameState.cardDeck.pop();
+        gameState.players.find(p => p.id === currentPlayerId).cards.push(card);
+        alert('You conquered a territory this turn and received a card!');
+      }
+      gameState.cardAwarded = false;
+    }
     
     // Move to the next phase
     gameState.nextPhase();
@@ -167,11 +226,12 @@ const App = () => {
     if (gameState.getCurrentPlayer().id !== currentPlayerId || 
         gameState.phase !== 'attack') return;
     
-    // Process attack
-    const result = gameState.combatSystem.resolveAttack(
+    // Process attack using the game engine
+    const result = gameEngine.processAttack(
+      currentPlayerId,
       fromTerritoryId,
       toTerritoryId,
-      { attackDice }
+      attackDice
     );
     
     console.log('Attack result:', result);
@@ -182,10 +242,20 @@ const App = () => {
       let message = `Attack result: ${result.attackerLosses} attacker(s) lost, ${result.defenderLosses} defender(s) lost.`;
       
       if (result.territoryConquered) {
-        message += ` You conquered ${result.defendingTerritory}!`;
+        // Get the territory name
+        const defendingTerritory = gameState.territories.find(t => t.id === toTerritoryId);
+        message += ` You conquered ${defendingTerritory.name}!`;
       }
       
       alert(message);
+      
+      // If the player has conquered at least one territory, award a card at the end of the attack phase
+      if (result.territoryConquered && !gameState.cardAwarded) {
+        gameState.cardAwarded = true;
+      }
+    } else if (result.error) {
+      // Show error message if attack failed
+      alert(result.error);
     }
   };
   
@@ -274,14 +344,14 @@ const App = () => {
   
   // Load a game from a save
   const loadGame = (saveName) => {
-    const serializedState = SaveLoadSystem.loadGame(saveName);
-    
-    if (!serializedState) {
-      alert('Failed to load game. Save file may be corrupted or missing.');
-      return false;
-    }
-    
     try {
+      const serializedState = SaveLoadSystem.loadGame(saveName);
+      
+      if (!serializedState) {
+        alert('Failed to load game. Save file may be corrupted or missing.');
+        return false;
+      }
+      
       // Recreate game state from serialized data
       const loadedState = GameState.deserialize(serializedState);
       
@@ -311,7 +381,9 @@ const App = () => {
       setAiPlayers(ais);
       setActiveView('game');
       
-      alert(`Game "${saveName}" loaded successfully!`);
+      if (saveName !== 'autosave') {
+        alert(`Game "${saveName}" loaded successfully!`);
+      }
       setShowSaveLoadMenu(false);
       return true;
     } catch (error) {

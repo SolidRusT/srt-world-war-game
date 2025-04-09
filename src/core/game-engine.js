@@ -2,7 +2,10 @@
  * Game engine for Risk-inspired strategy game
  */
 
-import { GameState, Territory, Continent, Player, Card } from './models.js';
+import { GameState, Territory, Continent, Player, Card, Technology } from './models.js';
+import TechManager from './tech-manager.js';
+import ResourceManager from './resource-manager.js';
+import classicMap from '../assets/maps/classic-map.js';
 
 /**
  * Handles core game logic and state transitions
@@ -52,6 +55,16 @@ class GameEngine {
     // Create initial game state
     this.gameState = new GameState(this.config, players, territories, continents, cardDeck);
     
+    // Initialize technology manager if technologies are enabled
+    if (this.config.enableTechnologies) {
+      this.gameState.techManager = new TechManager(this.gameState);
+    }
+    
+    // Initialize resource manager if resources are enabled
+    if (this.config.enableResources) {
+      this.gameState.resourceManager = new ResourceManager(this.gameState);
+    }
+    
     // Distribute territories and initial armies
     this.distributeInitialTerritories();
     this.placeInitialArmies();
@@ -65,13 +78,21 @@ class GameEngine {
    * @returns {Object} Map data
    */
   loadMapData(mapId) {
-    // TODO: Implement map loading from JSON files
-    // For now, return a placeholder
-    return {
-      name: 'Classic World Map',
-      territories: [],
-      continents: []
-    };
+    // Import map data dynamically based on mapId
+    try {
+      // For now, we only have the classic map
+      if (mapId === 'classic') {
+        // This would typically be a dynamic import, but for now we'll rely on the GameBoard component
+        // loading the map directly from the import
+        return null;
+      } else {
+        console.error(`Map ID '${mapId}' not found`);
+        return null;
+      }
+    } catch (error) {
+      console.error(`Error loading map data for '${mapId}':`, error);
+      return null;
+    }
   }
 
   /**
@@ -98,14 +119,17 @@ class GameEngine {
    * @returns {Territory[]} Array of territory objects
    */
   createTerritories() {
-    // TODO: Implement territory creation from map data
-    // For now, return a placeholder with some sample territories
-    const territories = [
-      new Territory('t1', 'Territory 1', ['t2', 't3'], 'c1'),
-      new Territory('t2', 'Territory 2', ['t1', 't3'], 'c1'),
-      new Territory('t3', 'Territory 3', ['t1', 't2', 't4'], 'c2'),
-      new Territory('t4', 'Territory 4', ['t3'], 'c2')
-    ];
+    // Create territory objects from the map data
+    // Using the imported classicMap from the top of the file
+    const territories = classicMap.territories.map(territoryData => {
+      return new Territory(
+        territoryData.id,
+        territoryData.name,
+        territoryData.adjacent,
+        territoryData.continent,
+        territoryData.resources || {}
+      );
+    });
     
     return territories;
   }
@@ -115,12 +139,21 @@ class GameEngine {
    * @returns {Continent[]} Array of continent objects
    */
   createContinents() {
-    // TODO: Implement continent creation from map data
-    // For now, return a placeholder with sample continents
-    const continents = [
-      new Continent('c1', 'Continent 1', ['t1', 't2'], 2),
-      new Continent('c2', 'Continent 2', ['t3', 't4'], 1)
-    ];
+    // Create continent objects from the map data
+    // Using the imported classicMap from the top of the file
+    const continents = classicMap.continents.map(continentData => {
+      // Find all territories that belong to this continent
+      const continentTerritories = classicMap.territories
+        .filter(t => t.continent === continentData.id)
+        .map(t => t.id);
+      
+      return new Continent(
+        continentData.id,
+        continentData.name,
+        continentTerritories,
+        continentData.bonusArmies
+      );
+    });
     
     return continents;
   }
