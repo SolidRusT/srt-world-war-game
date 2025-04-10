@@ -24,6 +24,7 @@ This game reimagines the classic world conquest strategy game with new mechanics
 - **Army Management**: Build and deploy armies of different types
 - **Resource System**: Gather food, production, research, and wealth
 - **Technology Tree**: Research technologies for special abilities and bonuses
+- **Dynamic Events**: Experience random events that can help or hinder your progress
 - **Combat System**: Strategic dice-based combat with bonuses from technologies and unit types
 - **Multiple Victory Paths**: Win through military dominance, economic power, technological superiority, or diplomatic alliances
 
@@ -42,11 +43,16 @@ risk-inspired-game/
 │   │   ├── combat-system.js # Combat resolution
 │   │   ├── resource-manager.js # Resource management
 │   │   ├── tech-manager.js # Technology research system
+│   │   ├── events/        # Dynamic events system
+│   │   │   ├── events-manager.js # Events management
+│   │   │   └── event-types.js # Event definitions
 │   │   └── ai-player.js   # AI opponent logic
 │   ├── ui/                # User interface
 │   │   ├── GameBoard.jsx  # Game board visualization
 │   │   ├── GameDashboard.jsx # Game controls and status
-│   │   └── TechTree.jsx   # Technology tree visualization
+│   │   ├── TechTree.jsx   # Technology tree visualization
+│   │   ├── EventsDisplay.jsx # Events display and history
+│   │   └── EventNotification.jsx # Event notifications
 │   ├── assets/            # Game assets
 │   │   ├── maps/          # Map definitions
 │   │   │   └── classic-map.js # Classic world map
@@ -57,9 +63,30 @@ risk-inspired-game/
 └── CUSTOM_INSTRUCTIONS.md # Development guidelines
 ```
 
-## Getting Started
+## Feature Highlights
 
-### Prerequisites
+### Dynamic Events System
+
+The game features a robust events system that adds unpredictability and excitement to gameplay:
+
+- **Random Events**: Events trigger randomly during the game, affecting resources, armies, combat abilities, and more
+- **Event Categories**: Experience positive, negative, and neutral events with varying effects
+- **Territory-Specific Events**: Some events target specific territories or regions
+- **Duration-Based Effects**: Events can have immediate one-time effects or persist for multiple turns
+- **Contextual Triggers**: Events trigger based on game state, player actions, and territory control
+
+Events add strategic depth by creating unexpected challenges and opportunities that players must adapt to.
+
+### Technology Research
+
+The technology tree provides multiple paths for specialization:
+
+- **Military Technologies**: Enhance your combat capabilities
+- **Economic Technologies**: Improve resource production and management
+- **Diplomatic Technologies**: Gain advantages in alliances and relations
+- **Research Technologies**: Speed up technological progress
+
+## Getting Started
 
 - Node.js (v14+)
 - npm or yarn
