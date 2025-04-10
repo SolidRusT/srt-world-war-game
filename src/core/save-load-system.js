@@ -7,6 +7,74 @@
  */
 class SaveLoadSystem {
   /**
+   * Create a serialized version of the game state
+   * @param {Object} gameState - Game state to serialize
+   * @returns {Object} Serialized game state
+   */
+  static createSerializedState(gameState) {
+    if (!gameState) return null;
+    
+    // Check if the serialize method exists on the gameState
+    if (typeof gameState.serialize === 'function') {
+      return gameState.serialize();
+    }
+    
+    // If serialize() is not available, manually serialize the state
+    const serializedState = {
+      config: gameState.config,
+      players: gameState.players.map(player => ({
+        id: player.id,
+        name: player.name,
+        color: player.color,
+        territories: player.territories,
+        cards: player.cards,
+        resources: player.resources,
+        technologies: player.technologies,
+        allies: player.allies,
+        eliminated: player.eliminated,
+        victoryProgress: player.victoryProgress
+      })),
+      territories: gameState.territories.map(territory => ({
+        id: territory.id,
+        name: territory.name,
+        adjacentTerritories: territory.adjacentTerritories,
+        continent: territory.continent,
+        occupyingPlayer: territory.occupyingPlayer,
+        armies: territory.armies,
+        resources: territory.resources,
+        features: territory.features
+      })),
+      continents: gameState.continents.map(continent => ({
+        id: continent.id,
+        name: continent.name,
+        territories: continent.territories,
+        bonusArmies: continent.bonusArmies
+      })),
+      cardDeck: gameState.cardDeck,
+      discardPile: gameState.discardPile,
+      currentPlayerIndex: gameState.currentPlayerIndex,
+      phase: gameState.phase,
+      turn: gameState.turn,
+      gameOver: gameState.gameOver,
+      winner: gameState.winner ? (typeof gameState.winner === 'object' ? gameState.winner.id : gameState.winner) : null,
+      victoryType: gameState.victoryType,
+      eventLog: gameState.eventLog,
+      activeEvents: gameState.activeEvents,
+      cardAwarded: gameState.cardAwarded
+    };
+    
+    // Add events data if available
+    if (gameState.eventsManager) {
+      serializedState.events = {
+        activeEvents: gameState.eventsManager.activeEvents,
+        eventHistory: gameState.eventsManager.eventHistory
+      };
+    }
+    
+    return serializedState;
+  }
+
+  /**
    * Save game state to localStorage
    * @param {Object} gameState - Game state to save
    * @param {string} saveName - Name of the save file
@@ -17,7 +85,7 @@ class SaveLoadSystem {
       if (!gameState) return false;
       
       // Create a serialized version of the game state
-      const serializedState = gameState.serialize();
+      const serializedState = this.createSerializedState(gameState);
       
       // Add metadata
       const saveData = {
