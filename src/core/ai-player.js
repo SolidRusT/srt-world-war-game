@@ -2,6 +2,8 @@
  * AI Player implementation for Risk-inspired strategy game
  */
 
+import { nextPhase, playerControlsContinent, resolveAttack, getTotalArmies } from './game-helpers.js';
+
 /**
  * Base AI player for the game
  */
@@ -184,7 +186,8 @@ class AIPlayer {
       
       // Add continent bonuses
       for (const continent of gameState.continents) {
-        if (gameState.playerControlsContinent(this.playerId, continent.id)) {
+        // Check if player controls the continent
+        if (playerControlsContinent(gameState, this.playerId, continent.id)) {
           reinforcements += continent.bonusArmies;
         }
       }
@@ -194,7 +197,8 @@ class AIPlayer {
       
       // Add continent bonuses
       for (const continent of gameState.continents) {
-        if (gameState.playerControlsContinent(this.playerId, continent.id)) {
+        // Check if player controls the continent
+        if (playerControlsContinent(gameState, this.playerId, continent.id)) {
           reinforcements += continent.bonusArmies;
         }
       }
@@ -223,14 +227,14 @@ class AIPlayer {
       let priority = this.memory.targetValue[id] || 10;
       
       // Prioritize territories with fewer armies
-      priority -= territory.getTotalArmies() * 2;
+      priority -= getTotalArmies(territory) * 2;
       
       // Prioritize territories adjacent to weak enemy territories
       const attackOpportunities = territory.adjacentTerritories.filter(adjId => {
         const adjTerritory = gameState.territories.find(t => t.id === adjId);
         return (
           adjTerritory.occupyingPlayer !== this.playerId &&
-          adjTerritory.getTotalArmies() < territory.getTotalArmies()
+          getTotalArmies(adjTerritory) < getTotalArmies(territory)
         );
       }).length;
       
@@ -291,7 +295,7 @@ class AIPlayer {
     }
     
     // Move to the next phase
-    gameState.nextPhase();
+    nextPhase(gameState);
     
     return reinforcementActions;
   }
@@ -319,10 +323,15 @@ class AIPlayer {
       }
       
       // Execute the attack
-      const result = gameState.combatSystem.resolveAttack(
+      const result = resolveAttack(
+        gameState,
         attack.fromTerritoryId,
         attack.toTerritoryId,
-        { attackDice: attack.attackDice }
+        { 
+          attackDice: attack.attackDice,
+          playerId: this.playerId,
+          defenderId: gameState.territories.find(t => t.id === attack.toTerritoryId)?.occupyingPlayer 
+        }
       );
       
       attacks.push({
@@ -353,7 +362,7 @@ class AIPlayer {
     }
     
     // Move to the next phase
-    gameState.nextPhase();
+    nextPhase(gameState);
     
     return attacks;
   }
@@ -370,7 +379,7 @@ class AIPlayer {
     // Find territories that can attack (have at least 2 armies)
     const attackingTerritories = player.territories
       .map(id => gameState.territories.find(t => t.id === id))
-      .filter(t => t && t.getTotalArmies() >= 2);
+      .filter(t => t && getTotalArmies(t) >= 2);
     
     if (attackingTerritories.length === 0) return null;
     
@@ -385,8 +394,8 @@ class AIPlayer {
       
       for (const enemyTerritory of adjacentEnemies) {
         // Calculate attack score
-        const attackerArmies = territory.getTotalArmies();
-        const defenderArmies = enemyTerritory.getTotalArmies();
+        const attackerArmies = getTotalArmies(territory);
+        const defenderArmies = getTotalArmies(enemyTerritory);
         
         // Skip if clearly outmatched
         if (attackerArmies <= defenderArmies) continue;
@@ -502,10 +511,10 @@ class AIPlayer {
     // Identify territories that can fortify (have at least 2 armies)
     const sourceTerritories = player.territories
       .map(id => gameState.territories.find(t => t.id === id))
-      .filter(t => t && t.getTotalArmies() >= 2);
+      .filter(t => t && getTotalArmies(t) >= 2);
     
     if (sourceTerritories.length === 0) {
-      gameState.nextPhase();
+      nextPhase(gameState);
       return null;
     }
     
@@ -538,18 +547,18 @@ class AIPlayer {
         if (!source.isAdjacentTo(target.id) || source.id === target.id) continue;
         
         // Skip if source doesn't have enough armies to move
-        if (source.getTotalArmies() <= 1) continue;
+        if (getTotalArmies(source) <= 1) continue;
         
         // Calculate fortification value
         const targetValue = this.memory.targetValue[target.id] || 10;
         const enemyThreat = this.calculateEnemyThreat(gameState, target);
         
         // Higher score = better fortification
-        const score = targetValue + enemyThreat * 2 - source.getTotalArmies();
+        const score = targetValue + enemyThreat * 2 - getTotalArmies(source);
         
         if (score > bestScore) {
           // Determine how many armies to move (leave 1 behind)
-          const armiesToMove = Math.max(1, source.getTotalArmies() - 1);
+          const armiesToMove = Math.max(1, getTotalArmies(source) - 1);
           
           bestFortification = {
             fromTerritoryId: source.id,
@@ -564,7 +573,7 @@ class AIPlayer {
     // If no good interior-to-border move found, try other fortifications
     if (!bestFortification) {
       // Find territories with excess armies that are not on critical borders
-      const excessTerritories = sourceTerritories.filter(t => t.getTotalArmies() > 3);
+      const excessTerritories = sourceTerritories.filter(t => getTotalArmies(t) > 3);
       
       for (const source of excessTerritories) {
         for (const targetId of source.adjacentTerritories) {
@@ -588,8 +597,8 @@ class AIPlayer {
           if (score > bestScore) {
             // Leave at least 1 army behind
             const armiesToMove = Math.max(1, Math.min(
-              source.getTotalArmies() - 1,
-              Math.ceil(source.getTotalArmies() / 2)
+              getTotalArmies(source) - 1,
+              Math.ceil(getTotalArmies(source) / 2)
             ));
             
             bestFortification = {
@@ -615,7 +624,7 @@ class AIPlayer {
     }
     
     // Move to the next phase
-    gameState.nextPhase();
+    nextPhase(gameState);
     
     return bestFortification;
   }
@@ -636,8 +645,8 @@ class AIPlayer {
       if (!adjTerritory || adjTerritory.occupyingPlayer === this.playerId) continue;
       
       // Calculate threat from this territory
-      const enemyArmies = adjTerritory.getTotalArmies();
-      const ourArmies = territory.getTotalArmies();
+      const enemyArmies = getTotalArmies(adjTerritory);
+      const ourArmies = getTotalArmies(territory);
       
       // Higher threat if they have more armies than us
       if (enemyArmies > ourArmies) {

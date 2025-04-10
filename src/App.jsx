@@ -10,6 +10,7 @@ import ConquestModal from './ui/ConquestModal';
 import GameEngine from './core/game-engine';
 import { GameState } from './core/models.js';
 import { AIPlayerFactory } from './core/ai-player';
+import { nextPhase } from './core/game-helpers.js';
 import createSampleCards from './core/sample-cards';
 import SaveLoadSystem from './core/save-load-system';
 import './App.css';
@@ -256,12 +257,31 @@ const App = () => {
             gameState.remainingReinforcements = count;
           }
           
-          // Perform AI turn
-          const actions = ai.performTurn(gameState);
-          console.log(`AI Player ${currentPlayer.name} actions:`, actions);
-          
-          // Update game state (in a real implementation, this would happen through the game engine)
-          setGameState({ ...gameState });
+          try {
+            // Perform AI turn on the current game state
+            const actions = ai.performTurn(gameState);
+            console.log(`AI Player ${currentPlayer.name} actions:`, actions);
+            
+            // Update the UI with the modified game state
+            setGameState({ ...gameState });
+          } catch (error) {
+            console.error(`Error during AI ${currentPlayer.name}'s turn:`, error);
+            // If there's an error, try to continue to next phase without skipping the player
+            if (gameState.phase === 'reinforcement') {
+              gameState.phase = 'attack';
+            } else if (gameState.phase === 'attack') {
+              gameState.phase = 'fortification';
+            } else {
+              // Only advance to next player if we've gone through all phases
+              gameState.phase = 'reinforcement';
+              gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+              // Skip eliminated players
+              while (gameState.players[gameState.currentPlayerIndex].eliminated) {
+                gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+              }
+            }
+            setGameState({ ...gameState });
+          }
         }, 1000);
         
         return () => clearTimeout(aiTurnTimeout);
