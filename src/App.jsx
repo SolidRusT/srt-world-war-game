@@ -4,6 +4,8 @@ import GameDashboard from './ui/GameDashboard';
 import TechTree from './ui/TechTree';
 import CardSystem from './ui/CardSystem';
 import SaveLoadMenu from './ui/SaveLoadMenu';
+import EventsDisplay from './ui/EventsDisplay';
+import EventNotification from './ui/EventNotification';
 import GameEngine from './core/game-engine';
 import { GameState } from './core/models.js';
 import { AIPlayerFactory } from './core/ai-player';
@@ -17,8 +19,9 @@ const App = () => {
   const [currentPlayerId, setCurrentPlayerId] = useState(null);
   const [aiPlayers, setAiPlayers] = useState({});
   const [selectedTerritory, setSelectedTerritory] = useState(null);
-  const [activeView, setActiveView] = useState('game'); // 'game', 'tech', 'cards', 'settings'
+  const [activeView, setActiveView] = useState('game'); // 'game', 'tech', 'cards', 'events', 'settings'
   const [showSaveLoadMenu, setShowSaveLoadMenu] = useState(false);
+  const [currentEvent, setCurrentEvent] = useState(null);
   const [gameConfig, setGameConfig] = useState({
     mapId: 'classic',
     playerCount: 4,
@@ -121,11 +124,32 @@ const App = () => {
     }
   };
   
-  // Handle AI turns
+  // Handle AI turns and event checking
   useEffect(() => {
     if (!gameState || !gameEngine || gameState.gameOver) return;
     
     const currentPlayer = gameState.getCurrentPlayer();
+    
+    // Check for events at the start of each player's turn during reinforcement phase
+    if (gameState.phase === 'reinforcement' && gameState.eventsManager) {
+      // Update active events (remove expired ones, apply ongoing effects)
+      const expiredEvents = gameState.eventsManager.updateActiveEvents(currentPlayer.id);
+      
+      // If it's the human player's turn, check for new events
+      if (currentPlayer.id === currentPlayerId) {
+        const newEvent = gameState.eventsManager.checkForEvent(currentPlayerId);
+        if (newEvent) {
+          // Add gameState reference to provide context for territory names
+          newEvent.gameState = gameState;
+          setCurrentEvent(newEvent);
+        }
+      }
+      
+      // If any events were updated, refresh the game state
+      if (expiredEvents.length > 0) {
+        setGameState({ ...gameState });
+      }
+    }
     
     // If current player is AI, process AI turn
     if (currentPlayer && currentPlayer.id !== currentPlayerId && !currentPlayer.eliminated) {
@@ -134,6 +158,12 @@ const App = () => {
       if (ai) {
         // Small delay to make AI turns visible
         const aiTurnTimeout = setTimeout(() => {
+          // Check for AI events (but don't display them to the player)
+          if (gameState.eventsManager && gameState.phase === 'reinforcement') {
+            const aiEvent = gameState.eventsManager.checkForEvent(currentPlayer.id);
+            // We don't need to set currentEvent here as these events are for AI players
+          }
+          
           // Perform AI turn
           const actions = ai.performTurn(gameState);
           console.log(`AI Player ${currentPlayer.name} actions:`, actions);
@@ -430,6 +460,15 @@ const App = () => {
             Cards ({humanPlayer.cards.length})
           </button>
           
+          {gameState?.config?.enableEvents && (
+            <button 
+              className={`nav-button ${activeView === 'events' ? 'active' : ''}`}
+              onClick={() => setActiveView('events')}
+            >
+              Events
+            </button>
+          )}
+          
           <button 
             className={`nav-button ${activeView === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveView('settings')}
@@ -482,6 +521,13 @@ const App = () => {
           />
         )}
         
+        {activeView === 'events' && gameState?.config?.enableEvents && (
+          <EventsDisplay
+            gameState={gameState}
+            currentPlayerId={currentPlayerId}
+          />
+        )}
+        
         {activeView === 'settings' && (
           <div className="settings-view">
             <h2>Game Settings</h2>
@@ -504,6 +550,14 @@ const App = () => {
             onClose={() => setShowSaveLoadMenu(false)}
           />
         </>
+      )}
+      
+      {/* Event Notification Modal */}
+      {currentEvent && (
+        <EventNotification 
+          event={currentEvent} 
+          onClose={() => setCurrentEvent(null)} 
+        />
       )}
     </div>
   );

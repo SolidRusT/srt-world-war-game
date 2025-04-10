@@ -5,6 +5,7 @@
 // Import managers for deserialization
 import TechManager from './tech-manager.js';
 import ResourceManager from './resource-manager.js';
+import EventsManager from './events/events-manager.js';
 
 /**
  * Represents a territory on the game board
@@ -464,7 +465,7 @@ class GameState {
    */
   serialize() {
     // Create a simplified object that can be serialized to JSON
-    return {
+    const serializedState = {
       config: this.config,
       players: this.players.map(player => ({
         id: player.id,
@@ -506,6 +507,16 @@ class GameState {
       activeEvents: this.activeEvents,
       cardAwarded: this.cardAwarded
     };
+    
+    // Add events data if available
+    if (this.eventsManager) {
+      serializedState.events = {
+        activeEvents: this.eventsManager.activeEvents,
+        eventHistory: this.eventsManager.eventHistory
+      };
+    }
+    
+    return serializedState;
   }
   
   /**
@@ -582,6 +593,17 @@ class GameState {
     // Recreate the resource manager if resources are enabled
     if (gameState.config.enableResources) {
       gameState.resourceManager = new ResourceManager(gameState);
+    }
+    
+    // Recreate the events manager if events are enabled
+    if (gameState.config.enableEvents) {
+      gameState.eventsManager = new EventsManager(gameState);
+      
+      // Restore events data if available
+      if (data.events) {
+        gameState.eventsManager.activeEvents = data.events.activeEvents || [];
+        gameState.eventsManager.eventHistory = data.events.eventHistory || [];
+      }
     }
     
     return gameState;

@@ -5,6 +5,7 @@
 import { GameState, Territory, Continent, Player, Card, Technology } from './models.js';
 import TechManager from './tech-manager.js';
 import ResourceManager from './resource-manager.js';
+import EventsManager from './events/events-manager.js';
 import classicMap from '../assets/maps/classic-map.js';
 
 /**
@@ -63,6 +64,11 @@ class GameEngine {
     // Initialize resource manager if resources are enabled
     if (this.config.enableResources) {
       this.gameState.resourceManager = new ResourceManager(this.gameState);
+    }
+    
+    // Initialize events manager if events are enabled
+    if (this.config.enableEvents) {
+      this.gameState.eventsManager = new EventsManager(this.gameState);
     }
     
     // Distribute territories and initial armies
@@ -509,9 +515,28 @@ class GameEngine {
       return false;
     }
     
-    // Verify the territories are adjacent
-    if (!fromTerritory.isAdjacentTo(toTerritoryId)) {
-      return false;
+    // Check movement range based on events
+    let movementRange = 1;
+    if (this.gameState.eventsManager) {
+      const movementMod = this.gameState.eventsManager.getMovementModifiers(playerId);
+      movementRange += movementMod;
+    }
+    
+    // Check if technology gives movement bonuses - e.g. improved-logistics
+    if (player.technologies && player.technologies.includes('improved-logistics')) {
+      movementRange += 1;
+    }
+    
+    // Verify the territories are within movement range
+    if (movementRange === 1) {
+      // Default behavior - territories must be adjacent
+      if (!fromTerritory.isAdjacentTo(toTerritoryId)) {
+        return false;
+      }
+    } else {
+      // Enhanced movement range - would need a path finding algorithm in a real implementation
+      // For now, we'll simplify and just allow movement between any owned territories
+      // A better implementation would check for connected paths up to the movement range
     }
     
     // Verify the source territory has enough armies

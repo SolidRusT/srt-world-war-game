@@ -1,0 +1,156 @@
+.event-notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.event-notification {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border-top: 6px solid #ccc;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.event-notification.event-category-good {
+  border-top-color: #4caf50;
+}
+
+.event-notification.event-category-bad {
+  border-top-color: #f44336;
+}
+
+.event-notification.event-category-neutral {
+  border-top-color: #ff9800;
+}
+
+.event-notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.event-notification-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.event-duration {
+  background-color: #eee;
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 14px;
+  color: #555;
+}
+
+.event-notification-body {
+  padding: 20px;
+}
+
+.event-message {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.effect-details {
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.effect-details h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #555;
+  font-size: 16px;
+}
+
+.effect-details ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.effect-details li {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.affected-territories {
+  margin-top: 15px;
+}
+
+.affected-territories h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #555;
+  font-size: 16px;
+}
+
+.affected-territories ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.affected-territories li {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+li.positive {
+  color: #388e3c;
+}
+
+li.negative {
+  color: #d32f2f;
+}
+
+.event-notification-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.close-button {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: #1976d2;
+}

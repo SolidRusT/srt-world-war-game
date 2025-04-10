@@ -251,6 +251,16 @@ class CombatSystem {
       bonus = Math.floor(bonus * 1.25);
     }
     
+    // Add event-based combat modifiers if events manager exists
+    if (this.gameState.eventsManager) {
+      const eventModifier = this.gameState.eventsManager.getCombatModifiers(
+        player.id,
+        territory.id,
+        type
+      );
+      bonus += eventModifier;
+    }
+    
     return bonus;
   }
 

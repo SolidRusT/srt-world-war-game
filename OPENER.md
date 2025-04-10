@@ -1,6 +1,6 @@
 # RISK-INSPIRED STRATEGY GAME - PROJECT GUIDE FOR CLAUDE
 
-This document is intended solely for Claude 3.7 Sonnet to re-establish context for continuing development of this project.
+This document is intended solely for Claude 3.7 Sonnet to re-establish context for continuing development of this project, which resides in the `G:\GameDev\risk-inspired-game` folder.
 
 ## PROJECT OVERVIEW
 
