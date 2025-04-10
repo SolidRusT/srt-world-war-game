@@ -274,8 +274,17 @@ class GameEngine {
     if (!player) return false;
     
     // Verify it's the player's turn and the reinforcement phase
-    if (this.gameState.getCurrentPlayer().id !== playerId || 
-        this.gameState.phase !== 'reinforcement') {
+    let isCurrentPlayer = false;
+    
+    // Check if getCurrentPlayer is a function
+    if (typeof this.gameState.getCurrentPlayer === 'function') {
+      isCurrentPlayer = this.gameState.getCurrentPlayer().id === playerId;
+    } else if (this.gameState.currentPlayerIndex !== undefined) {
+      // Use the current player index directly
+      isCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex].id === playerId;
+    }
+    
+    if (!isCurrentPlayer || this.gameState.phase !== 'reinforcement') {
       return false;
     }
     
@@ -324,8 +333,17 @@ class GameEngine {
     if (!player) return { success: false, error: 'Invalid player' };
     
     // Verify it's the player's turn and the attack phase
-    if (this.gameState.getCurrentPlayer().id !== playerId || 
-        this.gameState.phase !== 'attack') {
+    let isCurrentPlayer = false;
+    
+    // Check if getCurrentPlayer is a function
+    if (typeof this.gameState.getCurrentPlayer === 'function') {
+      isCurrentPlayer = this.gameState.getCurrentPlayer().id === playerId;
+    } else if (this.gameState.currentPlayerIndex !== undefined) {
+      // Use the current player index directly
+      isCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex].id === playerId;
+    }
+    
+    if (!isCurrentPlayer || this.gameState.phase !== 'attack') {
       return { success: false, error: 'Not your turn or phase' };
     }
     
@@ -496,8 +514,17 @@ class GameEngine {
     if (!player) return false;
     
     // Verify it's the player's turn and the fortification phase
-    if (this.gameState.getCurrentPlayer().id !== playerId || 
-        this.gameState.phase !== 'fortification') {
+    let isCurrentPlayer = false;
+    
+    // Check if getCurrentPlayer is a function
+    if (typeof this.gameState.getCurrentPlayer === 'function') {
+      isCurrentPlayer = this.gameState.getCurrentPlayer().id === playerId;
+    } else if (this.gameState.currentPlayerIndex !== undefined) {
+      // Use the current player index directly
+      isCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex].id === playerId;
+    }
+    
+    if (!isCurrentPlayer || this.gameState.phase !== 'fortification') {
       return false;
     }
     

@@ -40,6 +40,12 @@ const GameDashboard = ({
   const calculateReinforcements = () => {
     if (!isCurrentPlayerTurn || gameState.phase !== 'reinforcement') return 0;
     
+    // If remaining reinforcements are tracked, use that value
+    if (gameState.remainingReinforcements !== undefined) {
+      return gameState.remainingReinforcements;
+    }
+    
+    // Otherwise calculate from scratch
     // Base reinforcement from territories
     let count = Math.max(3, Math.floor(currentPlayer.territories.length / 3));
     
@@ -164,7 +170,13 @@ const GameDashboard = ({
               
               <div className="form-buttons">
                 <button type="submit">Place Armies</button>
-                <button type="button" onClick={() => onEndPhase()}>End Phase</button>
+                {gameState.remainingReinforcements > 0 ? (
+                  <span className="reinforcement-info">
+                    {gameState.remainingReinforcements} armies left to place
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => onEndPhase()}>End Phase</button>
+                )}
               </div>
             </form>
           </div>

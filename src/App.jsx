@@ -134,11 +134,24 @@ const App = () => {
     }
   }, [gameState, currentPlayerId]);
   
+  // Helper function to get the current player safely
+  const getCurrentPlayer = (gameState) => {
+    if (!gameState) return null;
+    
+    if (typeof gameState.getCurrentPlayer === 'function') {
+      return gameState.getCurrentPlayer();
+    } else if (gameState.currentPlayerIndex !== undefined) {
+      return gameState.players[gameState.currentPlayerIndex];
+    }
+    return null;
+  };
+  
   // Handle AI turns and event checking
   useEffect(() => {
     if (!gameState || !gameEngine || gameState.gameOver) return;
     
-    const currentPlayer = gameState.getCurrentPlayer();
+    const currentPlayer = getCurrentPlayer(gameState);
+    if (!currentPlayer) return;
     
     // Check for events at the start of each player's turn during reinforcement phase
     if (gameState.phase === 'reinforcement' && gameState.eventsManager) {
@@ -172,6 +185,26 @@ const App = () => {
           if (gameState.eventsManager && gameState.phase === 'reinforcement') {
             const aiEvent = gameState.eventsManager.checkForEvent(currentPlayer.id);
             // We don't need to set currentEvent here as these events are for AI players
+          }
+          
+          // Reset reinforcement tracking for AI players
+          if (gameState.phase === 'reinforcement') {
+            // Initialize remaining reinforcements for AI
+            let count = Math.max(3, Math.floor(currentPlayer.territories.length / 3));
+            
+            // Add continent bonuses
+            for (const continent of gameState.continents) {
+              const continentTerritories = continent.territories;
+              const playerOwnsAll = continentTerritories.every(terrId => 
+                currentPlayer.territories.includes(terrId)
+              );
+              
+              if (playerOwnsAll) {
+                count += continent.bonusArmies;
+              }
+            }
+            
+            gameState.remainingReinforcements = count;
           }
           
           // Perform AI turn
@@ -217,12 +250,11 @@ const App = () => {
     console.log('Selected territory:', territory);
   };
   
-  // Handler for ending the current phase
   const handleEndPhase = () => {
     if (!gameState || gameState.gameOver) return;
     
     // Check if it's the human player's turn
-    if (gameState.getCurrentPlayer().id !== currentPlayerId) return;
+    if (!checkPlayerTurn(currentPlayerId)) return;
     
     // If ending the attack phase and player conquered a territory, award a card
     if (gameState.phase === 'attack' && gameState.cardAwarded) {
@@ -236,17 +268,82 @@ const App = () => {
     }
     
     // Move to the next phase
-    gameState.nextPhase();
+    // Check if nextPhase is a function or if we need to handle phase transitions manually
+    if (typeof gameState.nextPhase === 'function') {
+      gameState.nextPhase();
+    } else {
+      // Manual implementation if gameState.nextPhase is not a function
+      switch (gameState.phase) {
+        case 'reinforcement':
+          gameState.phase = 'attack';
+          gameState.cardAwarded = false; // Reset card awarded flag
+          break;
+        case 'attack':
+          gameState.phase = 'fortification';
+          break;
+        case 'fortification':
+          gameState.phase = 'reinforcement';
+          // Move to next player
+          gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+          // Skip eliminated players
+          while (gameState.players[gameState.currentPlayerIndex].eliminated) {
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+          }
+          // Increment turn counter if completed a full round
+          if (gameState.currentPlayerIndex === 0) {
+            gameState.turn++;
+          }
+          // Reset reinforcement tracking for the new player
+          gameState.remainingReinforcements = undefined;
+          break;
+      }
+    }
     setGameState({ ...gameState });
   };
   
-  // Handler for placing armies during reinforcement
+  // Check if it's the human player's turn and the reinforcement phase
+  const checkPlayerTurn = (playerId) => {
+    if (!gameState) return false;
+    
+    const currentTurnPlayer = getCurrentPlayer(gameState);
+    if (!currentTurnPlayer) return false;
+    
+    return currentTurnPlayer.id === playerId;
+  };
+
+  // Process a player's reinforcement phase
   const handlePlaceArmies = (territoryId, armyCount) => {
     if (!gameState || gameState.gameOver) return;
     
     // Check if it's the human player's turn and the reinforcement phase
-    if (gameState.getCurrentPlayer().id !== currentPlayerId || 
-        gameState.phase !== 'reinforcement') return;
+    if (!checkPlayerTurn(currentPlayerId) || gameState.phase !== 'reinforcement') return;
+    
+    // Initialize remaining reinforcements if not already set
+    if (gameState.remainingReinforcements === undefined) {
+      const player = gameState.players.find(p => p.id === currentPlayerId);
+      // Calculate reinforcements using the same logic as in GameDashboard
+      let count = Math.max(3, Math.floor(player.territories.length / 3));
+      
+      // Add continent bonuses
+      for (const continent of gameState.continents) {
+        const continentTerritories = continent.territories;
+        const playerOwnsAll = continentTerritories.every(terrId => 
+          player.territories.includes(terrId)
+        );
+        
+        if (playerOwnsAll) {
+          count += continent.bonusArmies;
+        }
+      }
+      
+      gameState.remainingReinforcements = count;
+    }
+    
+    // Verify the player has enough remaining reinforcements
+    if (armyCount > gameState.remainingReinforcements) {
+      alert(`You only have ${gameState.remainingReinforcements} armies left to place.`);
+      return;
+    }
     
     // Create reinforcement map
     const reinforcements = {
@@ -254,8 +351,25 @@ const App = () => {
     };
     
     // Process reinforcement
-    gameEngine.processReinforcement(currentPlayerId, reinforcements);
-    setGameState({ ...gameState });
+    const success = gameEngine.processReinforcement(currentPlayerId, reinforcements);
+    
+    if (success) {
+      // Reduce remaining reinforcements
+      gameState.remainingReinforcements -= armyCount;
+      
+      // If no reinforcements left, automatically advance to the next phase
+      if (gameState.remainingReinforcements <= 0) {
+        // Move to the next phase
+        if (typeof gameState.nextPhase === 'function') {
+          gameState.nextPhase();
+        } else {
+          gameState.phase = 'attack';
+          gameState.cardAwarded = false; // Reset card awarded flag
+        }
+      }
+      
+      setGameState({ ...gameState });
+    }
   };
   
   // Handler for attacking during attack phase
@@ -263,8 +377,7 @@ const App = () => {
     if (!gameState || gameState.gameOver) return;
     
     // Check if it's the human player's turn and the attack phase
-    if (gameState.getCurrentPlayer().id !== currentPlayerId || 
-        gameState.phase !== 'attack') return;
+    if (!checkPlayerTurn(currentPlayerId) || gameState.phase !== 'attack') return;
     
     // Process attack using the game engine
     const result = gameEngine.processAttack(
@@ -304,8 +417,7 @@ const App = () => {
     if (!gameState || gameState.gameOver) return;
     
     // Check if it's the human player's turn and the fortification phase
-    if (gameState.getCurrentPlayer().id !== currentPlayerId || 
-        gameState.phase !== 'fortification') return;
+    if (!checkPlayerTurn(currentPlayerId) || gameState.phase !== 'fortification') return;
     
     // Process fortification
     gameEngine.processFortification(
