@@ -94,6 +94,13 @@ const App = () => {
       // Initialize game state
       const state = engine.initializeGame();
       
+      // Make sure gameEngine.gameState is set properly
+      engine.gameState = state;
+      console.log('Game engine initialized with state:', {
+        phase: state.phase,
+        currentPlayerIndex: state.currentPlayerIndex
+      });
+      
       // Set human player ID
       const humanPlayerId = state.players[0].id;
       
@@ -124,6 +131,19 @@ const App = () => {
     }
   };
   
+  // Synchronize game engine with game state
+  useEffect(() => {
+    if (gameState && gameEngine) {
+      // Keep gameEngine.gameState in sync with our React state
+      gameEngine.gameState = gameState;
+      
+      console.log('Game engine synchronized with current state:', {
+        phase: gameState.phase,
+        currentPlayerIndex: gameState.currentPlayerIndex
+      });
+    }
+  }, [gameState, gameEngine]);
+  
   // Update gameState.activeEvents with data from eventsManager
   useEffect(() => {
     if (gameState && gameState.eventsManager) {
@@ -145,6 +165,33 @@ const App = () => {
     }
     return null;
   };
+  
+  // Debug utility to log game state
+  const logGameState = () => {
+    if (!gameState) return;
+    
+    console.log('GAME STATE DEBUG INFO:', {
+      phase: gameState.phase,
+      currentPlayerIndex: gameState.currentPlayerIndex,
+      currentPlayerId: gameState.players[gameState.currentPlayerIndex]?.id,
+      humanPlayerId: currentPlayerId,
+      isHumanTurn: gameState.players[gameState.currentPlayerIndex]?.id === currentPlayerId,
+      turn: gameState.turn
+    });
+  };
+  
+  // Add keyboard shortcut for debug info
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Press D to log debug info
+      if (e.key === 'd' || e.key === 'D') {
+        logGameState();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState, currentPlayerId]);
   
   // Handle AI turns and event checking
   useEffect(() => {
@@ -350,34 +397,57 @@ const App = () => {
       [territoryId]: armyCount
     };
     
-    // Process reinforcement
-    const success = gameEngine.processReinforcement(currentPlayerId, reinforcements);
+    // Process reinforcement directly by updating territory, without using the processReinforcement
+    // method which would advance the phase
+    const territory = gameState.territories.find(t => t.id === territoryId);
     
-    if (success) {
-      // Reduce remaining reinforcements
-      gameState.remainingReinforcements -= armyCount;
-      
-      // If no reinforcements left, automatically advance to the next phase
-      if (gameState.remainingReinforcements <= 0) {
-        // Move to the next phase
-        if (typeof gameState.nextPhase === 'function') {
-          gameState.nextPhase();
-        } else {
-          gameState.phase = 'attack';
-          gameState.cardAwarded = false; // Reset card awarded flag
-        }
-      }
-      
-      setGameState({ ...gameState });
+    // Check if territory exists and is owned by the player
+    if (!territory || territory.occupyingPlayer !== currentPlayerId) {
+      alert('You cannot place armies on a territory you do not control.');
+      return;
     }
+    
+    // Place the armies
+    territory.armies.infantry += armyCount;
+    
+    // Reduce remaining reinforcements
+    gameState.remainingReinforcements -= armyCount;
+    
+    // If no reinforcements left, automatically advance to the next phase
+    if (gameState.remainingReinforcements <= 0) {
+      // Move to the next phase
+      if (typeof gameState.nextPhase === 'function') {
+        gameState.nextPhase();
+      } else {
+        gameState.phase = 'attack';
+        gameState.cardAwarded = false; // Reset card awarded flag
+      }
+    }
+    
+    setGameState({ ...gameState });
   };
   
   // Handler for attacking during attack phase
   const handleAttack = (fromTerritoryId, toTerritoryId, attackDice) => {
     if (!gameState || gameState.gameOver) return;
     
+    // Debug the attack phase
+    console.log('Attack attempt:', {
+      currentPhase: gameState.phase,
+      isYourTurn: checkPlayerTurn(currentPlayerId),
+      fromTerritoryId,
+      toTerritoryId,
+      attackDice
+    });
+    
     // Check if it's the human player's turn and the attack phase
-    if (!checkPlayerTurn(currentPlayerId) || gameState.phase !== 'attack') return;
+    if (!checkPlayerTurn(currentPlayerId) || gameState.phase !== 'attack') {
+      alert(`Cannot attack: ${!checkPlayerTurn(currentPlayerId) ? 'Not your turn' : 'Not in attack phase'}`);
+      return;
+    }
+    
+    // Make sure gameEngine has the correct game state before processing the attack
+    gameEngine.gameState = gameState;
     
     // Process attack using the game engine
     const result = gameEngine.processAttack(
@@ -416,18 +486,38 @@ const App = () => {
   const handleFortify = (fromTerritoryId, toTerritoryId, armyCount) => {
     if (!gameState || gameState.gameOver) return;
     
+    // Debug the fortification phase
+    console.log('Fortification attempt:', {
+      currentPhase: gameState.phase,
+      isYourTurn: checkPlayerTurn(currentPlayerId),
+      fromTerritoryId,
+      toTerritoryId,
+      armyCount
+    });
+    
     // Check if it's the human player's turn and the fortification phase
-    if (!checkPlayerTurn(currentPlayerId) || gameState.phase !== 'fortification') return;
+    if (!checkPlayerTurn(currentPlayerId) || gameState.phase !== 'fortification') {
+      alert(`Cannot fortify: ${!checkPlayerTurn(currentPlayerId) ? 'Not your turn' : 'Not in fortification phase'}`);
+      return;
+    }
+    
+    // Make sure gameEngine has the correct game state before processing the fortification
+    gameEngine.gameState = gameState;
     
     // Process fortification
-    gameEngine.processFortification(
+    const result = gameEngine.processFortification(
       currentPlayerId,
       fromTerritoryId,
       toTerritoryId,
       armyCount
     );
     
+    console.log('Fortification result:', result);
     setGameState({ ...gameState });
+    
+    if (result === false) {
+      alert('Fortification failed. Check that the territories are adjacent and you have enough armies.');
+    }
   };
   
   // Handler for starting tech research
@@ -510,6 +600,11 @@ const App = () => {
       // Recreate game engine
       const engine = new GameEngine(loadedState.config);
       engine.gameState = loadedState;
+      
+      console.log('Game engine loaded with saved state:', {
+        phase: loadedState.phase,
+        currentPlayerIndex: loadedState.currentPlayerIndex
+      });
       
       // Set the human player ID
       const humanPlayerId = loadedState.players.find(p => !p.id.startsWith('ai')).id;

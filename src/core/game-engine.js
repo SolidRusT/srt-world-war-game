@@ -335,7 +335,7 @@ class GameEngine {
     // Verify it's the player's turn and the attack phase
     let isCurrentPlayer = false;
     
-    // Check if getCurrentPlayer is a function
+    // Check if getCurrentPlayer is a function on this.gameState
     if (typeof this.gameState.getCurrentPlayer === 'function') {
       isCurrentPlayer = this.gameState.getCurrentPlayer().id === playerId;
     } else if (this.gameState.currentPlayerIndex !== undefined) {
@@ -343,8 +343,20 @@ class GameEngine {
       isCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex].id === playerId;
     }
     
-    if (!isCurrentPlayer || this.gameState.phase !== 'attack') {
-      return { success: false, error: 'Not your turn or phase' };
+    // Debug logging to identify the issue
+    console.log('Attack validation in game-engine.js:', {
+      playerId,
+      currentPhase: this.gameState.phase,
+      isCurrentPlayer,
+      expectedPlayer: this.gameState.players[this.gameState.currentPlayerIndex]?.id
+    });
+    
+    if (!isCurrentPlayer) {
+      return { success: false, error: 'Not your turn' };
+    }
+    
+    if (this.gameState.phase !== 'attack') {
+      return { success: false, error: 'Not in attack phase' };
     }
     
     const fromTerritory = this.gameState.territories.find(t => t.id === fromTerritoryId);
