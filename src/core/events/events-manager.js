@@ -240,6 +240,7 @@ class EventsManager {
         // These are handled during the fortification phase
         break;
         
+      case 'territories':
       case 'territory':
         // Change territory features
         if (event.territoryEffect && event.affectedTerritories) {

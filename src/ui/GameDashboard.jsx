@@ -23,7 +23,18 @@ const GameDashboard = ({
   const currentPlayer = gameState.players.find(p => p.id === currentPlayerId);
   if (!currentPlayer) return <div>Player not found</div>;
   
-  const isCurrentPlayerTurn = gameState.getCurrentPlayer().id === currentPlayerId;
+  // Get the current player (safely handling both function and property access)
+  const getCurrentPlayer = () => {
+    if (typeof gameState.getCurrentPlayer === 'function') {
+      return gameState.getCurrentPlayer();
+    } else if (gameState.currentPlayerIndex !== undefined) {
+      return gameState.players[gameState.currentPlayerIndex];
+    }
+    return null;
+  };
+  
+  const currentTurnPlayer = getCurrentPlayer();
+  const isCurrentPlayerTurn = currentTurnPlayer && currentTurnPlayer.id === currentPlayerId;
   
   // Calculate reinforcements
   const calculateReinforcements = () => {
@@ -107,7 +118,7 @@ const GameDashboard = ({
       return (
         <div className="action-panel waiting">
           <h3>Waiting for other players</h3>
-          <p>It's {gameState.getCurrentPlayer().name}'s turn ({formatPhase(gameState.phase)} Phase)</p>
+          <p>It's {currentTurnPlayer ? currentTurnPlayer.name : 'another player'}'s turn ({formatPhase(gameState.phase)} Phase)</p>
         </div>
       );
     }
@@ -389,11 +400,13 @@ const GameDashboard = ({
         </p>
         
         <p className="active-player">
-          Active Player: <strong>{gameState.getCurrentPlayer().name}</strong>
-          <span 
-            className="color-indicator" 
-            style={{ backgroundColor: gameState.getCurrentPlayer().color }}
-          ></span>
+          Active Player: <strong>{currentTurnPlayer ? currentTurnPlayer.name : 'Unknown'}</strong>
+          {currentTurnPlayer && (
+            <span 
+              className="color-indicator" 
+              style={{ backgroundColor: currentTurnPlayer.color }}
+            ></span>
+          )}
         </p>
         
         <div className="player-list">
@@ -416,13 +429,17 @@ const GameDashboard = ({
           <div className="active-events">
             <h4>Active Events</h4>
             <ul>
-              {gameState.activeEvents.map((event, index) => (
-                <li key={index}>
-                  <strong>{event.name}</strong>
-                  <span className="event-duration">({event.turnsRemaining} turns remaining)</span>
-                  <p>{event.description}</p>
-                </li>
-              ))}
+              {gameState.activeEvents && gameState.activeEvents.map((event, index) => {
+                // Calculate turns remaining
+                const turnsRemaining = event.endTurn - gameState.turn;
+                return (
+                  <li key={`${event.id}-${index}`}>
+                    <strong>{event.name}</strong>
+                    <span className="event-duration">({turnsRemaining} turns remaining)</span>
+                    <p>{event.message}</p>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

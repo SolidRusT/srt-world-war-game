@@ -484,7 +484,7 @@ export const eventTypes = [
     name: 'Population Migration',
     message: 'Population migrates from {territories} to neighboring regions!',
     category: 'neutral',
-    effectType: 'territories',
+    effectType: 'territory',
     effectScope: 'territories',
     targetScope: 'player',
     territoryCount: 2,

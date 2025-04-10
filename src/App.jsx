@@ -124,6 +124,16 @@ const App = () => {
     }
   };
   
+  // Update gameState.activeEvents with data from eventsManager
+  useEffect(() => {
+    if (gameState && gameState.eventsManager) {
+      // Make sure activeEvents are available at the top level of gameState for UI components
+      if (currentPlayerId) {
+        gameState.activeEvents = gameState.eventsManager.getPlayerActiveEvents(currentPlayerId);
+      }
+    }
+  }, [gameState, currentPlayerId]);
+  
   // Handle AI turns and event checking
   useEffect(() => {
     if (!gameState || !gameEngine || gameState.gameOver) return;
