@@ -471,30 +471,15 @@ class GameEngine {
     if (toTerritory.getTotalArmies() === 0) {
       territoryConquered = true;
       
-      // Find the defending player
-      const defenderId = toTerritory.occupyingPlayer;
-      const defender = this.gameState.players.find(p => p.id === defenderId);
-      
-      // Update territory ownership
-      toTerritory.occupyingPlayer = playerId;
-      toTerritory.armies.infantry = attackDice; // Move attacking dice count
-      fromTerritory.armies.infantry -= attackDice;
-      
-      // Update player territory lists
-      player.territories.push(toTerritoryId);
-      defender.territories = defender.territories.filter(id => id !== toTerritoryId);
-      
-      // Check if defender is eliminated
-      if (defender.territories.length === 0) {
-        defender.eliminated = true;
-        
-        // Transfer defender's cards to attacker
-        player.cards = player.cards.concat(defender.cards);
-        defender.cards = [];
-        
-        // Check if game is over
-        this.gameState.checkGameEnd();
-      }
+      // Instead of automatically moving troops, we'll mark this as pending for the player to decide
+      // how many armies to move
+      this.gameState.pendingConquest = {
+        fromTerritoryId,
+        toTerritoryId,
+        minArmies: attackDice,
+        maxArmies: fromTerritory.getTotalArmies() - 1,
+        defenderId: toTerritory.occupyingPlayer
+      };
       
       // Flag that a card should be awarded at the end of the attack phase
       // Only awarded once per turn for conquering at least one territory
@@ -510,6 +495,84 @@ class GameEngine {
       attackerLosses,
       defenderLosses,
       territoryConquered
+    };
+  }
+
+  /**
+   * Complete a territory conquest by moving armies
+   * @param {string} playerId - ID of the conquering player
+   * @param {number} armyCount - Number of armies to move
+   * @returns {Object} Result of the conquest completion
+   */
+  completeConquest(playerId, armyCount) {
+    // Verify we have a pending conquest
+    if (!this.gameState.pendingConquest) {
+      return { success: false, error: 'No pending conquest' };
+    }
+    
+    // Get the pending conquest data
+    const {
+      fromTerritoryId, 
+      toTerritoryId, 
+      minArmies, 
+      maxArmies,
+      defenderId
+    } = this.gameState.pendingConquest;
+    
+    // Verify this is the conquering player
+    if (playerId !== this.gameState.players[this.gameState.currentPlayerIndex].id) {
+      return { success: false, error: 'Not your conquest' };
+    }
+    
+    // Verify the army count is valid
+    if (armyCount < minArmies || armyCount > maxArmies) {
+      return { 
+        success: false, 
+        error: `Army count must be between ${minArmies} and ${maxArmies}`,
+        minArmies,
+        maxArmies
+      };
+    }
+    
+    // Get the territories and players
+    const player = this.gameState.players.find(p => p.id === playerId);
+    const defender = this.gameState.players.find(p => p.id === defenderId);
+    const fromTerritory = this.gameState.territories.find(t => t.id === fromTerritoryId);
+    const toTerritory = this.gameState.territories.find(t => t.id === toTerritoryId);
+    
+    // Update territory ownership
+    toTerritory.occupyingPlayer = playerId;
+    toTerritory.armies.infantry = armyCount;
+    fromTerritory.armies.infantry -= armyCount;
+    
+    // Update player territory lists
+    player.territories.push(toTerritoryId);
+    defender.territories = defender.territories.filter(id => id !== toTerritoryId);
+    
+    // Check if defender is eliminated
+    if (defender.territories.length === 0) {
+      defender.eliminated = true;
+      
+      // Transfer defender's cards to attacker
+      player.cards = player.cards.concat(defender.cards);
+      defender.cards = [];
+      
+      // Check if game is over
+      if (typeof this.gameState.checkGameEnd === 'function') {
+        this.gameState.checkGameEnd();
+      } else if (typeof this.gameState.checkVictoryConditions === 'function') {
+        this.gameState.checkVictoryConditions();
+      }
+    }
+    
+    // Clear the pending conquest
+    this.gameState.pendingConquest = null;
+    
+    return { 
+      success: true, 
+      message: `Moved ${armyCount} armies to ${toTerritory.name}`,
+      conqueredTerritoryName: toTerritory.name,
+      defenderEliminated: defender.eliminated
     };
   }
 

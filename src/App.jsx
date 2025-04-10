@@ -6,6 +6,7 @@ import CardSystem from './ui/CardSystem';
 import SaveLoadMenu from './ui/SaveLoadMenu';
 import EventsDisplay from './ui/EventsDisplay';
 import EventNotification from './ui/EventNotification';
+import ConquestModal from './ui/ConquestModal';
 import GameEngine from './core/game-engine';
 import { GameState } from './core/models.js';
 import { AIPlayerFactory } from './core/ai-player';
@@ -22,6 +23,7 @@ const App = () => {
   const [activeView, setActiveView] = useState('game'); // 'game', 'tech', 'cards', 'events', 'settings'
   const [showSaveLoadMenu, setShowSaveLoadMenu] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(null);
+  const [showConquestModal, setShowConquestModal] = useState(false);
   const [gameConfig, setGameConfig] = useState({
     mapId: 'classic',
     playerCount: 4,
@@ -267,6 +269,16 @@ const App = () => {
     }
   }, [gameState, gameEngine, currentPlayerId, aiPlayers]);
   
+  // Show conquest modal when a territory is conquered
+  useEffect(() => {
+    if (gameState && gameState.pendingConquest) {
+      setShowConquestModal(true);
+      console.log('Showing conquest modal for:', gameState.pendingConquest);
+    } else {
+      setShowConquestModal(false);
+    }
+  }, [gameState?.pendingConquest]);
+
   // Check for game over
   useEffect(() => {
     if (gameState && gameState.gameOver && gameState.winner) {
@@ -467,10 +479,13 @@ const App = () => {
       if (result.territoryConquered) {
         // Get the territory name
         const defendingTerritory = gameState.territories.find(t => t.id === toTerritoryId);
-        message += ` You conquered ${defendingTerritory.name}!`;
+        message += ` You conquered ${defendingTerritory.name}! Now select how many armies to move.`;
+        
+        // Modal will appear automatically due to our pendingConquest useEffect
+      } else {
+        // Only show alert if not showing the conquest modal
+        alert(message);
       }
-      
-      alert(message);
       
       // If the player has conquered at least one territory, award a card at the end of the attack phase
       if (result.territoryConquered && !gameState.cardAwarded) {
@@ -482,6 +497,42 @@ const App = () => {
     }
   };
   
+  // Handler for completing a conquest by moving armies
+  const handleCompleteConquest = (armyCount) => {
+    if (!gameState || !gameState.pendingConquest) return;
+    
+    console.log('Completing conquest with', armyCount, 'armies');
+    
+    // Make sure gameEngine has the correct game state
+    gameEngine.gameState = gameState;
+    
+    // Process the conquest completion
+    const result = gameEngine.completeConquest(currentPlayerId, armyCount);
+    
+    console.log('Conquest completion result:', result);
+    
+    if (result.success) {
+      // If a player was eliminated, show a message
+      if (result.defenderEliminated) {
+        const defender = gameState.players.find(p => p.territories.length === 0 && !p.id.startsWith('p'));
+        if (defender) {
+          alert(`You eliminated ${defender.name} from the game!`);
+        }
+      }
+      
+      // Update the game state
+      setGameState({ ...gameState });
+    } else if (result.error) {
+      // Show error message
+      alert(`Error completing conquest: ${result.error}`);
+      
+      // If the error indicates an invalid army count, set it to the minimum
+      if (result.minArmies && result.maxArmies) {
+        // Let the modal handle this
+      }
+    }
+  };
+
   // Handler for fortifying during fortification phase
   const handleFortify = (fromTerritoryId, toTerritoryId, armyCount) => {
     if (!gameState || gameState.gameOver) return;
@@ -774,6 +825,24 @@ const App = () => {
         <EventNotification 
           event={currentEvent} 
           onClose={() => setCurrentEvent(null)} 
+        />
+      )}
+      
+      {/* Conquest Modal */}
+      {showConquestModal && gameState?.pendingConquest && (
+        <ConquestModal
+          pendingConquest={gameState.pendingConquest}
+          gameState={gameState}
+          onComplete={handleCompleteConquest}
+          onClose={() => {
+            // In real Risk, you cannot cancel a conquest - you must move armies
+            // But for debugging purposes, we'll allow cancellation
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Conquest cancelled - this should only be used during development');
+              gameState.pendingConquest = null;
+              setGameState({ ...gameState });
+            }
+          }}
         />
       )}
     </div>
