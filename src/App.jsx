@@ -568,16 +568,16 @@ const App = () => {
   };
   
   // Handler for completing a conquest by moving armies
-  const handleCompleteConquest = (armyCount) => {
+  const handleCompleteConquest = (armyCount, unitDistribution = null) => {
     if (!gameState || !gameState.pendingConquest) return;
     
-    console.log('Completing conquest with', armyCount, 'armies');
+    console.log('Completing conquest with', armyCount, 'armies', unitDistribution ? 'and custom unit distribution' : '');
     
     // Make sure gameEngine has the correct game state
     gameEngine.gameState = gameState;
     
-    // Process the conquest completion
-    const result = gameEngine.completeConquest(currentPlayerId, armyCount);
+    // Process the conquest completion - pass unitDistribution if provided
+    const result = gameEngine.completeConquest(currentPlayerId, armyCount, unitDistribution);
     
     console.log('Conquest completion result:', result);
     
@@ -604,7 +604,7 @@ const App = () => {
   };
 
   // Handler for fortifying during fortification phase
-  const handleFortify = (fromTerritoryId, toTerritoryId, armyCount) => {
+  const handleFortify = (fromTerritoryId, toTerritoryId, armyCount, unitDistribution = null) => {
     if (!gameState || gameState.gameOver) return;
     
     // Debug the fortification phase
@@ -613,7 +613,8 @@ const App = () => {
       isYourTurn: checkPlayerTurn(currentPlayerId),
       fromTerritoryId,
       toTerritoryId,
-      armyCount
+      armyCount,
+      unitDistribution
     });
     
     // Check if it's the human player's turn and the fortification phase
@@ -625,12 +626,13 @@ const App = () => {
     // Make sure gameEngine has the correct game state before processing the fortification
     gameEngine.gameState = gameState;
     
-    // Process fortification
+    // Process fortification with or without unit distribution
     const result = gameEngine.processFortification(
       currentPlayerId,
       fromTerritoryId,
       toTerritoryId,
-      armyCount
+      armyCount,
+      unitDistribution
     );
     
     console.log('Fortification result:', result);

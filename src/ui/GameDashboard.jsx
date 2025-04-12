@@ -98,6 +98,45 @@ const GameDashboard = ({
     setArmyCount(1);
   };
   
+  // State for advanced unit type selection during fortification
+  const [showAdvancedFortify, setShowAdvancedFortify] = useState(false);
+  const [unitDistribution, setUnitDistribution] = useState({
+    infantry: 1,
+    cavalry: 0,
+    artillery: 0
+  });
+  
+  // Calculate total army value from unit distribution
+  const calculateDistributionValue = (distribution) => {
+    return distribution.infantry + 
+           (distribution.cavalry * 3) + 
+           (distribution.artillery * 5);
+  };
+  
+  // Handle changes to unit distribution
+  const handleUnitChange = (unitType, value, sourceTerritory) => {
+    // Make sure value is a number
+    value = parseInt(value, 10) || 0;
+    
+    // Ensure value is not negative
+    value = Math.max(0, value);
+    
+    // Ensure value doesn't exceed available units in the source territory
+    if (sourceTerritory) {
+      value = Math.min(value, sourceTerritory.armies[unitType] || 0);
+    }
+    
+    // Update the distribution
+    const newDistribution = { ...unitDistribution, [unitType]: value };
+    
+    // Calculate the total army value and update the armyCount
+    const newTotal = calculateDistributionValue(newDistribution);
+    
+    // Update state
+    setUnitDistribution(newDistribution);
+    setArmyCount(newTotal);
+  };
+  
   // Handle fortification submission
   const handleFortifySubmit = (e) => {
     e.preventDefault();
@@ -112,10 +151,48 @@ const GameDashboard = ({
       return;
     }
     
-    onFortify(selectedSourceTerritory, selectedTargetTerritory, armyCount);
+    const sourceTerritory = gameState.territories.find(t => t.id === selectedSourceTerritory);
+    if (!sourceTerritory) return;
+    
+    // Ensure we don't move more than available
+    if (armyCount >= sourceTerritory.getTotalArmies()) {
+      alert('You must leave at least one army in the source territory');
+      return;
+    }
+    
+    // If using advanced mode, validate the unit distribution
+    if (showAdvancedFortify) {
+      // Verify each unit type doesn't exceed what's available
+      if (unitDistribution.infantry > sourceTerritory.armies.infantry ||
+          unitDistribution.cavalry > sourceTerritory.armies.cavalry ||
+          unitDistribution.artillery > sourceTerritory.armies.artillery) {
+        alert('You cannot move more units than are available in the source territory');
+        return;
+      }
+      
+      // Verify total equals armyCount
+      if (calculateDistributionValue(unitDistribution) !== armyCount) {
+        alert('The total value of units must match the army count');
+        return;
+      }
+      
+      // Call fortify with unit distribution
+      onFortify(selectedSourceTerritory, selectedTargetTerritory, armyCount, unitDistribution);
+    } else {
+      // Standard fortify without unit distribution
+      onFortify(selectedSourceTerritory, selectedTargetTerritory, armyCount);
+    }
+    
+    // Reset state
     setSelectedSourceTerritory(null);
     setSelectedTargetTerritory(null);
     setArmyCount(1);
+    setUnitDistribution({
+      infantry: 1,
+      cavalry: 0,
+      artillery: 0
+    });
+    setShowAdvancedFortify(false);
   };
   
   // Render the action panel based on current phase
@@ -329,18 +406,100 @@ const GameDashboard = ({
                 </select>
               </div>
               
-              <div className="form-group">
-                <label>Armies to move:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={selectedSourceTerritory ? 
-                    gameState.territories.find(t => t.id === selectedSourceTerritory)?.getTotalArmies() - 1 : 1}
-                  value={armyCount}
-                  onChange={(e) => setArmyCount(parseInt(e.target.value))}
-                  required
-                />
+              <div className="options-toggle">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAdvancedFortify(!showAdvancedFortify)}
+                  className="toggle-button"
+                >
+                  {showAdvancedFortify ? "Simple Mode" : "Advanced Mode"}
+                </button>
               </div>
+              
+              {!showAdvancedFortify ? (
+                <div className="form-group">
+                  <label>Armies to move:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={selectedSourceTerritory ? 
+                      gameState.territories.find(t => t.id === selectedSourceTerritory)?.getTotalArmies() - 1 : 1}
+                    value={armyCount}
+                    onChange={(e) => {
+                      const newCount = parseInt(e.target.value);
+                      setArmyCount(newCount);
+                      // Update unit distribution for simple mode - just infantry
+                      setUnitDistribution({
+                        ...unitDistribution,
+                        infantry: newCount
+                      });
+                    }}
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="advanced-options">
+                  <h4>Select Units to Move:</h4>
+                  
+                  {selectedSourceTerritory && (() => {
+                    const sourceTerritory = gameState.territories.find(t => t.id === selectedSourceTerritory);
+                    if (!sourceTerritory) return null;
+                    
+                    return (
+                      <>
+                        <div className="unit-selector">
+                          <label>Infantry:</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max={sourceTerritory.armies.infantry}
+                            value={unitDistribution.infantry}
+                            onChange={(e) => handleUnitChange('infantry', e.target.value, sourceTerritory)}
+                          />
+                          <span className="available">
+                            (Available: {sourceTerritory.armies.infantry})
+                          </span>
+                        </div>
+                        
+                        <div className="unit-selector">
+                          <label>Cavalry (x3):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max={sourceTerritory.armies.cavalry}
+                            value={unitDistribution.cavalry}
+                            onChange={(e) => handleUnitChange('cavalry', e.target.value, sourceTerritory)}
+                          />
+                          <span className="available">
+                            (Available: {sourceTerritory.armies.cavalry})
+                          </span>
+                        </div>
+                        
+                        <div className="unit-selector">
+                          <label>Artillery (x5):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max={sourceTerritory.armies.artillery}
+                            value={unitDistribution.artillery}
+                            onChange={(e) => handleUnitChange('artillery', e.target.value, sourceTerritory)}
+                          />
+                          <span className="available">
+                            (Available: {sourceTerritory.armies.artillery})
+                          </span>
+                        </div>
+                        
+                        <div className="total-value">
+                          Total Army Value: {calculateDistributionValue(unitDistribution)}
+                          {calculateDistributionValue(unitDistribution) !== armyCount && (
+                            <span className="error">Total must equal {armyCount}</span>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()} 
+                </div>
+              )}
               
               <div className="form-buttons">
                 <button type="submit">Move Armies</button>

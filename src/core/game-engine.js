@@ -502,9 +502,10 @@ class GameEngine {
    * Complete a territory conquest by moving armies
    * @param {string} playerId - ID of the conquering player
    * @param {number} armyCount - Number of armies to move
+   * @param {Object} unitDistribution - Optional distribution of unit types to move
    * @returns {Object} Result of the conquest completion
    */
-  completeConquest(playerId, armyCount) {
+  completeConquest(playerId, armyCount, unitDistribution = null) {
     // Verify we have a pending conquest
     if (!this.gameState.pendingConquest) {
       return { success: false, error: 'No pending conquest' };
@@ -542,8 +543,49 @@ class GameEngine {
     
     // Update territory ownership
     toTerritory.occupyingPlayer = playerId;
-    toTerritory.armies.infantry = armyCount;
-    fromTerritory.armies.infantry -= armyCount;
+    
+    // Clear existing armies in conquered territory
+    toTerritory.armies = {
+      infantry: 0,
+      cavalry: 0,
+      artillery: 0
+    };
+    
+    // Move the units based on the specified distribution or default to infantry
+    if (unitDistribution) {
+      // If unit distribution is provided, use it for more precise control
+      // Validate that the unit distribution doesn't exceed available armies
+      const infantryToMove = unitDistribution.infantry || 0;
+      const cavalryToMove = unitDistribution.cavalry || 0;
+      const artilleryToMove = unitDistribution.artillery || 0;
+      
+      if (infantryToMove > fromTerritory.armies.infantry ||
+          cavalryToMove > fromTerritory.armies.cavalry ||
+          artilleryToMove > fromTerritory.armies.artillery) {
+        return { success: false, error: 'Cannot move more units than available' };
+      }
+      
+      // Validate that total army count matches requested
+      const totalArmyValue = infantryToMove + (cavalryToMove * 3) + (artilleryToMove * 5);
+      if (totalArmyValue !== armyCount) {
+        return { success: false, error: 'Unit distribution doesn\'t match requested army count' };
+      }
+      
+      // Move the units
+      fromTerritory.armies.infantry -= infantryToMove;
+      toTerritory.armies.infantry += infantryToMove;
+      
+      fromTerritory.armies.cavalry -= cavalryToMove;
+      toTerritory.armies.cavalry += cavalryToMove;
+      
+      fromTerritory.armies.artillery -= artilleryToMove;
+      toTerritory.armies.artillery += artilleryToMove;
+    } else {
+      // Default behavior - just move infantry for simplicity
+      // Future enhancement would provide UI for selecting which unit types to move
+      toTerritory.armies.infantry = armyCount;
+      fromTerritory.armies.infantry -= armyCount;
+    }
     
     // Update player territory lists
     player.territories.push(toTerritoryId);
@@ -582,9 +624,10 @@ class GameEngine {
    * @param {string} fromTerritoryId - ID of the source territory
    * @param {string} toTerritoryId - ID of the destination territory
    * @param {number} armyCount - Number of armies to move
+   * @param {Object} unitDistribution - Optional distribution of unit types to move
    * @returns {boolean} True if successful
    */
-  processFortification(playerId, fromTerritoryId, toTerritoryId, armyCount) {
+  processFortification(playerId, fromTerritoryId, toTerritoryId, armyCount, unitDistribution = null) {
     const player = this.gameState.players.find(p => p.id === playerId);
     if (!player) return false;
     
@@ -647,33 +690,66 @@ class GameEngine {
     }
     
     // Move the armies, handling different unit types
-    let remainingToMove = armyCount;
-    
-    // Move infantry first
-    const infantryToMove = Math.min(fromTerritory.armies.infantry, remainingToMove);
-    if (infantryToMove > 0) {
+    if (unitDistribution) {
+      // If unit distribution is provided, use it for more precise control
+      // This allows the player to specify exactly which units to move
+      
+      // First validate that the unit distribution doesn't exceed available armies
+      const infantryToMove = unitDistribution.infantry || 0;
+      const cavalryToMove = unitDistribution.cavalry || 0;
+      const artilleryToMove = unitDistribution.artillery || 0;
+      
+      if (infantryToMove > fromTerritory.armies.infantry ||
+          cavalryToMove > fromTerritory.armies.cavalry ||
+          artilleryToMove > fromTerritory.armies.artillery) {
+        return false; // Cannot move more units than available
+      }
+      
+      // Validate that total army count matches requested
+      const totalArmyValue = infantryToMove + (cavalryToMove * 3) + (artilleryToMove * 5);
+      if (totalArmyValue !== armyCount) {
+        return false; // Unit distribution doesn't match requested army count
+      }
+      
+      // Move the units
       fromTerritory.armies.infantry -= infantryToMove;
       toTerritory.armies.infantry += infantryToMove;
-      remainingToMove -= infantryToMove;
-    }
-    
-    // Move cavalry if needed and available
-    if (remainingToMove > 0) {
-      const cavalryToMove = Math.min(fromTerritory.armies.cavalry, Math.ceil(remainingToMove / 3));
-      if (cavalryToMove > 0) {
-        fromTerritory.armies.cavalry -= cavalryToMove;
-        toTerritory.armies.cavalry += cavalryToMove;
-        remainingToMove -= cavalryToMove * 3;
+      
+      fromTerritory.armies.cavalry -= cavalryToMove;
+      toTerritory.armies.cavalry += cavalryToMove;
+      
+      fromTerritory.armies.artillery -= artilleryToMove;
+      toTerritory.armies.artillery += artilleryToMove;
+    } else {
+      // If no unit distribution is provided, use the automatic algorithm
+      let remainingToMove = armyCount;
+      
+      // Move infantry first
+      const infantryToMove = Math.min(fromTerritory.armies.infantry, remainingToMove);
+      if (infantryToMove > 0) {
+        fromTerritory.armies.infantry -= infantryToMove;
+        toTerritory.armies.infantry += infantryToMove;
+        remainingToMove -= infantryToMove;
       }
-    }
-    
-    // Move artillery if needed and available
-    if (remainingToMove > 0) {
-      const artilleryToMove = Math.min(fromTerritory.armies.artillery, Math.ceil(remainingToMove / 5));
-      if (artilleryToMove > 0) {
-        fromTerritory.armies.artillery -= artilleryToMove;
-        toTerritory.armies.artillery += artilleryToMove;
-        remainingToMove -= artilleryToMove * 5;
+      
+      // Move cavalry if needed and available
+      if (remainingToMove > 0) {
+        const cavalryToMove = Math.min(fromTerritory.armies.cavalry, Math.ceil(remainingToMove / 3));
+        if (cavalryToMove > 0) {
+          fromTerritory.armies.cavalry -= cavalryToMove;
+          toTerritory.armies.cavalry += cavalryToMove;
+          remainingToMove -= cavalryToMove * 3;
+        }
+      }
+      
+      // Move artillery if needed and available
+      if (remainingToMove > 0) {
+        const artilleryToMove = Math.min(fromTerritory.armies.artillery, Math.ceil(remainingToMove / 5));
+        if (artilleryToMove > 0) {
+          fromTerritory.armies.artillery -= artilleryToMove;
+          toTerritory.armies.artillery += artilleryToMove;
+          remainingToMove -= artilleryToMove * 5;
+        }
       }
     }
     

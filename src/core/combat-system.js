@@ -369,14 +369,16 @@ class CombatSystem {
     // Update territory ownership
     territory.occupyingPlayer = newOwnerId;
     
-    // Clear any remaining armies first
+    // Handle armies consistent with game-engine.js approach
+    // Clear existing armies first
     territory.armies = {
       infantry: 0,
       cavalry: 0,
       artillery: 0
     };
     
-    // Move attacking armies (using infantry for consistency with game-engine.js)
+    // By default, move only infantry as in game-engine.js completeConquest method
+    // This is simplest and most predictable approach for territory transfers
     territory.armies.infantry = armyCount;
     
     // Update player territory lists

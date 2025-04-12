@@ -172,11 +172,20 @@ function resolveAttack(gameState, fromTerritoryId, toTerritoryId, options = {}) 
   if (getTotalArmies(toTerritory) <= 0) {
     territoryConquered = true;
     
-    // Move armies automatically for AI
+    // Move armies automatically for AI - consistent with game-engine.js approach
     const movingArmies = Math.min(getTotalArmies(fromTerritory) - 1, attackDice);
     
     // Handle conquest
     toTerritory.occupyingPlayer = fromTerritory.occupyingPlayer;
+    
+    // Clear existing armies in conquered territory
+    toTerritory.armies = {
+      infantry: 0,
+      cavalry: 0,
+      artillery: 0
+    };
+    
+    // Move infantry only, consistent with game-engine.js
     toTerritory.armies.infantry = movingArmies;
     fromTerritory.armies.infantry -= movingArmies;
     
