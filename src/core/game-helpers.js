@@ -203,8 +203,11 @@ function resolveAttack(gameState, fromTerritoryId, toTerritoryId, options = {}) 
       }
     }
     
-    // Flag that a card should be awarded
-    gameState.cardAwarded = true;
+    // Flag that a card should be awarded at the end of the attack phase
+    // This is the standard approach used across game-engine.js and combat-system.js
+    if (!gameState.cardAwarded) {
+      gameState.cardAwarded = true;
+    }
   }
   
   return {

@@ -262,6 +262,12 @@ const App = () => {
             const actions = ai.performTurn(gameState);
             console.log(`AI Player ${currentPlayer.name} actions:`, actions);
             
+            // Handle card awards for AI players at the end of attack phase if needed
+            if (gameState.phase === 'fortification' && gameState.cardAwarded) {
+              // Award card to AI player - similar to human player award logic
+              handleAICardAward(gameState, currentPlayer.id);
+            }
+            
             // Update the UI with the modified game state
             setGameState({ ...gameState });
           } catch (error) {
@@ -337,12 +343,27 @@ const App = () => {
     
     // If ending the attack phase and player conquered a territory, award a card
     if (gameState.phase === 'attack' && gameState.cardAwarded) {
+      // Check if card deck is empty, reshuffle discard pile if needed
+      if (gameState.cardDeck.length === 0 && gameState.discardPile.length > 0) {
+        // Move all cards from discard pile to the deck
+        gameState.cardDeck = [...gameState.discardPile];
+        gameState.discardPile = [];
+        
+        // Use the standard shuffling method
+        gameState.shuffleCardDeck();
+        console.log('Reshuffled discard pile into new card deck');
+      }
+      
       // Give the player a card from the deck
       if (gameState.cardDeck.length > 0) {
         const card = gameState.cardDeck.pop();
         gameState.players.find(p => p.id === currentPlayerId).cards.push(card);
         alert('You conquered a territory this turn and received a card!');
+      } else {
+        console.warn('No cards available to award to player');
       }
+      
+      // Reset the card awarded flag
       gameState.cardAwarded = false;
     }
     
@@ -390,6 +411,33 @@ const App = () => {
     return currentTurnPlayer.id === playerId;
   };
 
+  // Handle card award for AI players
+  const handleAICardAward = (gameState, aiPlayerId) => {
+    // Check if card deck is empty, reshuffle discard pile if needed
+    if (gameState.cardDeck.length === 0 && gameState.discardPile.length > 0) {
+      // Use the standard shuffling method
+      gameState.cardDeck = [...gameState.discardPile];
+      gameState.discardPile = [];
+      gameState.shuffleCardDeck();
+      console.log('Reshuffled discard pile into new card deck for AI');
+    }
+    
+    // Award a card to the AI player
+    if (gameState.cardDeck.length > 0) {
+      const card = gameState.cardDeck.pop();
+      const aiPlayer = gameState.players.find(p => p.id === aiPlayerId);
+      if (aiPlayer) {
+        aiPlayer.cards.push(card);
+        console.log(`AI Player ${aiPlayer.name} received a card`);
+      }
+    } else {
+      console.warn('No cards available to award to AI player');
+    }
+    
+    // Reset the card awarded flag
+    gameState.cardAwarded = false;
+  };
+  
   // Process a player's reinforcement phase
   const handlePlaceArmies = (territoryId, armyCount) => {
     if (!gameState || gameState.gameOver) return;
@@ -507,9 +555,11 @@ const App = () => {
         alert(message);
       }
       
-      // If the player has conquered at least one territory, award a card at the end of the attack phase
+      // If the player has conquered at least one territory, set flag to award a card at the end of the attack phase
+      // The actual card is awarded in handleEndPhase when the attack phase ends
       if (result.territoryConquered && !gameState.cardAwarded) {
         gameState.cardAwarded = true;
+        console.log('Territory conquered - card will be awarded at end of attack phase');
       }
     } else if (result.error) {
       // Show error message if attack failed

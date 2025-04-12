@@ -383,8 +383,8 @@ class CombatSystem {
     newOwner.territories.push(territoryId);
     previousOwner.territories = previousOwner.territories.filter(id => id !== territoryId);
     
-    // Set card awarded flag instead of immediately awarding the card
-    // This ensures consistency with game-engine.js approach
+    // Set card awarded flag - this is the standard approach across all modules
+    // Only awarded once per turn for conquering at least one territory
     if (!this.gameState.cardAwarded) {
       this.gameState.cardAwarded = true;
     }
@@ -476,16 +476,13 @@ class CombatSystem {
   }
 
   /**
-   * Helper method to award a card to a player
-   * @param {string} playerId - ID of the player
-   * @returns {Object|null} The awarded card or null if no card was awarded
+   * Helper method to get a card from the deck
+   * @returns {Object|null} A card from the deck or null if no cards are available
    * 
-   * Note: This is now a utility method that doesn't directly modify the game state.
-   * It's kept for future reference but not currently used directly by the combat system.
+   * Note: This method doesn't award the card to a player or modify the game state.
+   * It's a utility method for retrieving cards from the deck when needed.
    */
-  getCardForPlayer(playerId) {
-    // This is now a utility method that doesn't directly modify the game state
-    // It's kept for future reference but not currently used
+  getCardFromDeck() {
     if (this.gameState.cardDeck.length === 0) {
       // Reshuffle the discard pile if the deck is empty
       if (this.gameState.discardPile.length > 0) {

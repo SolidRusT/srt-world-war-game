@@ -232,6 +232,8 @@ class GameState {
         break;
       case 'attack':
         this.phase = 'fortification';
+        // If a card was earned during the attack phase, it will be awarded by the App.jsx
+        // component before advancing to the fortification phase
         break;
       case 'fortification':
         this.phase = 'reinforcement';
@@ -351,6 +353,23 @@ class GameState {
     
     // Check for other victory conditions
     return this.checkVictoryConditions();
+  }
+  
+  /**
+   * Shuffle the card deck using Fisher-Yates algorithm
+   * @returns {Card[]} The shuffled card deck
+   */
+  shuffleCardDeck() {
+    if (!this.cardDeck || this.cardDeck.length === 0) return [];
+    
+    const array = [...this.cardDeck];
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    
+    this.cardDeck = array;
+    return this.cardDeck;
   }
   
   /**
