@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: world-war-game
+  namespace: world-war-game
+  labels:
+    app: world-war-game
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: world-war-game
+  template:
+    metadata:
+      labels:
+        app: world-war-game
+    spec:
+      containers:
+      - name: world-war-game
+        image: suparious/world-war-game:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3

@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: world-war-game
+  namespace: world-war-game
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod-dns01"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - worldwar.lab.hq.solidrust.net
+    secretName: world-war-game-tls
+  rules:
+  - host: worldwar.lab.hq.solidrust.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: world-war-game
+            port:
+              number: 80

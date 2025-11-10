@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.gitignore
+*.md
+.vscode
+.archive
+tests
+*.log
+npm-debug.log*
+k8s
+deploy.ps1
+build-and-push.ps1

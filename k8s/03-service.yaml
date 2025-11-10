@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: world-war-game
+  namespace: world-war-game
+  labels:
+    app: world-war-game
+spec:
+  type: ClusterIP
+  selector:
+    app: world-war-game
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP
