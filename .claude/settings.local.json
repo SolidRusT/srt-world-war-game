@@ -3,7 +3,20 @@
     "allow": [
       "Bash(docker build:*)",
       "Bash(npm view:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "mcp__chroma__chroma_list_collections",
+      "mcp__chroma__chroma_create_collection",
+      "mcp__chroma__chroma_peek_collection",
+      "mcp__chroma__chroma_get_collection_info",
+      "mcp__chroma__chroma_get_collection_count",
+      "mcp__chroma__chroma_modify_collection",
+      "mcp__chroma__chroma_fork_collection",
+      "mcp__chroma__chroma_delete_collection",
+      "mcp__chroma__chroma_add_documents",
+      "mcp__chroma__chroma_query_documents",
+      "mcp__chroma__chroma_get_documents",
+      "mcp__chroma__chroma_update_documents",
+      "mcp__chroma__chroma_delete_documents"
     ],
     "deny": [],
     "ask": []
