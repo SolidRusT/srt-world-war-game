@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: world-war-game
-        image: suparious/world-war-game:latest
+        image: ghcr.io/solidrust/world-war-game:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80
